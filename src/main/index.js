@@ -78,7 +78,7 @@ app.whenReady().then(() => {
   
   ipcMain.handle("vault:writeFile", (_event, filePath, content) => {
     const fullPath = path.join(VAULT_PATH, filePath)
-    const dir = fullPath.substring(0, fullPath.lastIndexOf("\\"))
+    const dir = path.dirname(fullPath)
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true })
     }
@@ -102,7 +102,7 @@ app.whenReady().then(() => {
   
   ipcMain.handle("vault:createFile", (_event, filePath) => {
     const fullPath = path.join(VAULT_PATH, filePath)
-    const dir = fullPath.substring(0, fullPath.lastIndexOf("\\"))
+    const dir = path.dirname(fullPath)
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true })
     }
@@ -118,6 +118,38 @@ app.whenReady().then(() => {
       fs.mkdirSync(fullPath, { recursive: true })
     }
     return true
+  })
+
+  ipcMain.handle("vault:renameItem", (_event, itemPath, newName) => {
+    const fullPath = path.join(VAULT_PATH, itemPath)
+    if (!fs.existsSync(fullPath)) {
+      return false
+    }
+
+    const stat = fs.statSync(fullPath)
+    const isFile = stat.isFile()
+    const targetName = newName.trim()
+    if (!targetName) {
+      return false
+    }
+
+    const normalizedName = isFile
+      ? targetName.endsWith(".md")
+        ? targetName
+        : `${targetName}.md`
+      : targetName
+
+    const nextPath = path.join(path.dirname(fullPath), normalizedName)
+    if (nextPath === fullPath) {
+      return true
+    }
+
+    fs.renameSync(fullPath, nextPath)
+
+    return nextPath
+      .replace(VAULT_PATH, "")
+      .replace(/\\/g, "/")
+      .replace(/^\//, "")
   })
   
   ipcMain.handle("vault:deleteItem", (_event, itemPath) => {

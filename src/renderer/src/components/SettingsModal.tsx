@@ -27,13 +27,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onClose }) =
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="bg-background border p-4 rounded shadow-lg z-10 w-[480px]">
-        <h3 className="text-lg font-semibold mb-2">Settings</h3>
+      <div className="absolute inset-0 bg-black/25 backdrop-blur-[1px]" onClick={onClose} />
+      <div className="bg-background/95 border border-border/70 p-4 rounded-2xl shadow-sm z-10 w-[440px]">
+        <h3 className="text-base font-medium mb-3 tracking-tight">Settings</h3>
         <div className="mb-4">
-          <label className="block text-sm mb-1">Vault Directory</label>
+          <label className="block text-[11px] uppercase tracking-[0.2em] text-muted-foreground mb-2">
+            Vault Directory
+          </label>
           <input
-            className="w-full p-2 border rounded bg-input text-sm"
+            className="w-full p-2.5 border border-border/70 rounded-xl bg-background text-sm outline-none focus:ring-1 focus:ring-ring/40"
             value={path}
             onChange={e => setPath(e.target.value)}
             placeholder="Path to vault directory"

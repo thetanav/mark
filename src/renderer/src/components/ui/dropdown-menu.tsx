@@ -37,11 +37,33 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({ children }) => {
 const DropdownMenuTrigger = React.forwardRef<HTMLButtonElement, DropdownMenuTriggerProps>(
   ({ className, asChild, children, ...props }, ref) => {
     const { open, setOpen } = React.useContext(DropdownMenuContext)
+    const { onClick, ...restProps } = props
+    const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+      onClick?.(event)
+      if (!event.defaultPrevented) {
+        setOpen(!open)
+      }
+    }
+
+    if (asChild && React.isValidElement(children)) {
+      return React.cloneElement(children as React.ReactElement<any>, {
+        ref,
+        className: cn(children.props.className, className),
+        onClick: (event: React.MouseEvent<HTMLElement>) => {
+          children.props.onClick?.(event)
+          if (!event.defaultPrevented) {
+            setOpen(!open)
+          }
+        },
+        ...restProps,
+      })
+    }
+
     return (
       <button
         ref={ref}
         className={cn("inline-flex", className)}
-        onClick={() => setOpen(!open)}
+        onClick={handleClick}
         {...props}
       >
         {children}
@@ -61,7 +83,7 @@ const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContent
         <div
           ref={ref}
           className={cn(
-            "absolute z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
+            "absolute z-50 min-w-[8rem] overflow-hidden rounded-xl border border-border/70 bg-background/95 p-1 text-popover-foreground shadow-sm backdrop-blur-sm",
             align === 'end' ? 'right-0' : 'left-0'
           )}
           {...props}
@@ -81,7 +103,7 @@ const DropdownMenuItem = React.forwardRef<HTMLDivElement, DropdownMenuItemProps>
       <div
         ref={ref}
         className={cn(
-          "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground",
+          "relative flex cursor-pointer select-none items-center rounded-lg px-2 py-1.5 text-[13px] outline-none transition-colors hover:bg-accent/60 hover:text-accent-foreground",
           className
         )}
         onClick={() => {

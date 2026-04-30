@@ -116,7 +116,6 @@ export const Editor: React.FC<EditorProps> = ({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [filePath, findOpen]);
 
-  // Update local content only. Saving is explicit via the Save button in the header.
   const handleChange = useCallback(
     (value: string) => {
       setLocalContent(value);
@@ -184,10 +183,12 @@ export const Editor: React.FC<EditorProps> = ({
 
   if (!filePath) {
     return (
-      <div className="flex-1 flex items-center justify-center text-muted-foreground">
+      <div className="flex-1 flex items-center justify-center text-muted-foreground/80">
         <div className="text-center">
-          <div className="text-4xl mb-2">📝</div>
-          <p className="text-sm">Select a file or create a new one</p>
+          <div className="text-sm mb-2 tracking-[0.3em] uppercase opacity-40">
+            Note
+          </div>
+          <p className="text-[13px]">Select a file or create a new one</p>
         </div>
       </div>
     );
@@ -195,48 +196,51 @@ export const Editor: React.FC<EditorProps> = ({
 
   return (
     <div className="flex-1 flex flex-col h-full">
-      <div className="border-b px-4 py-2 flex items-center justify-between">
-        <span className="text-sm font-medium truncate">
+      <div className="border-b px-4 py-2.5 flex items-center justify-between">
+        <span className="text-[13px] font-medium truncate text-foreground/80">
           {filePath.split("/").pop()}
         </span>
-        <div className="flex items-center gap-1 ">
+
+        <div className="flex items-center gap-1">
           <Button
-            variant={findOpen ? "default" : "outline"}
-            size="icon"
+            variant={findOpen ? "secondary" : "ghost"}
+            size="icon-sm"
             className="h-7 w-7"
             onClick={() => setFindOpen((prev) => !prev)}
           >
             <Search className="w-3.5 h-3.5" />
           </Button>
-          <div className="flex gap-1 border rounded-lg">
+
+          <div className="flex gap-1 rounded-full bg-muted/50 p-0.5">
             <Button
-              variant={viewMode === "edit" ? "default" : "ghost"}
-              size="icon"
-              className="h-7 w-7"
+              variant={viewMode === "edit" ? "secondary" : "ghost"}
+              size="icon-sm"
+              className="h-7 w-7 rounded-full"
               onClick={() => setViewMode("edit")}
             >
               <Pencil className="w-3.5 h-3.5" />
             </Button>
             <Button
-              variant={viewMode === "split" ? "default" : "ghost"}
-              size="icon"
-              className="h-7 w-7"
+              variant={viewMode === "split" ? "secondary" : "ghost"}
+              size="icon-sm"
+              className="h-7 w-7 rounded-full"
               onClick={() => setViewMode("split")}
             >
               <Columns className="w-3.5 h-3.5" />
             </Button>
             <Button
-              variant={viewMode === "preview" ? "default" : "ghost"}
-              size="icon"
-              className="h-7 w-7"
+              variant={viewMode === "preview" ? "secondary" : "ghost"}
+              size="icon-sm"
+              className="h-7 w-7 rounded-full"
               onClick={() => setViewMode("preview")}
             >
               <Eye className="w-3.5 h-3.5" />
             </Button>
           </div>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="h-7 w-7 ml-1">
+              <Button variant="ghost" size="icon-sm" className="h-7 w-7 ml-1">
                 <Download className="w-3.5 h-3.5" />
               </Button>
             </DropdownMenuTrigger>
@@ -252,7 +256,6 @@ export const Editor: React.FC<EditorProps> = ({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          {/* Save button removed per design request */}
         </div>
       </div>
 
@@ -263,7 +266,7 @@ export const Editor: React.FC<EditorProps> = ({
               value={findQuery}
               onChange={(event) => setFindQuery(event.target.value)}
               placeholder="Find in file..."
-              className="h-8"
+              className="h-8 bg-background"
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
@@ -281,14 +284,14 @@ export const Editor: React.FC<EditorProps> = ({
               }}
             />
           </div>
-          <span className="text-xs text-muted-foreground tabular-nums min-w-[52px] text-right">
+          <span className="text-[11px] text-muted-foreground tabular-nums min-w-[52px] text-right">
             {findMatches.length === 0
               ? "0/0"
               : `${findIndex + 1}/${findMatches.length}`}
           </span>
           <Button
             variant="ghost"
-            size="icon"
+            size="icon-sm"
             className="h-7 w-7"
             onClick={() => {
               if (findMatches.length === 0) return;
@@ -301,7 +304,7 @@ export const Editor: React.FC<EditorProps> = ({
           </Button>
           <Button
             variant="ghost"
-            size="icon"
+            size="icon-sm"
             className="h-7 w-7"
             onClick={() => {
               if (findMatches.length === 0) return;
@@ -313,7 +316,7 @@ export const Editor: React.FC<EditorProps> = ({
           </Button>
           <Button
             variant="ghost"
-            size="icon"
+            size="icon-sm"
             className="h-7 w-7"
             onClick={() => setFindOpen(false)}
           >
@@ -331,11 +334,11 @@ export const Editor: React.FC<EditorProps> = ({
               width: viewMode === "split" ? (splitWidth ?? "50%") : "100%",
               fontFamily: "var(--font-mono)",
             }}
-            className={`h-full p-4 text-sm resize-none outline-none bg-background ${
-              viewMode === "split" ? "border-r" : ""
+            className={`h-full p-4 text-[15px] leading-7 resize-none outline-none bg-background ${
+              viewMode === "split" ? "border-r border-border/70" : ""
             }`}
             value={localContent}
-            onChange={(e) => handleChange(e.target.value)}
+            onChange={(event) => handleChange(event.target.value)}
             placeholder="Start writing markdown..."
           />
         )}
@@ -351,7 +354,7 @@ export const Editor: React.FC<EditorProps> = ({
                     : "50%"
                   : "100%",
             }}
-            className={`overflow-auto p-6 ${viewMode === "split" ? "" : ""}`}
+            className="overflow-auto p-6"
           >
             <div className="markdown-preview max-w-none">
               <Markdown>{localContent || "*Nothing to preview*"}</Markdown>
@@ -359,7 +362,6 @@ export const Editor: React.FC<EditorProps> = ({
           </div>
         )}
 
-        {/* Splitter for split view resizing */}
         {viewMode === "split" && (
           <div
             id="splitter"
@@ -372,14 +374,14 @@ export const Editor: React.FC<EditorProps> = ({
               bottom: 0,
               transform: "translateX(-3px)",
             }}
-            onMouseDown={(e) => {
-              const startX = e.clientX;
+            onMouseDown={(event) => {
+              const startX = event.clientX;
               const startWidth =
                 (
                   document.getElementById("editor-textarea") as HTMLElement
                 )?.getBoundingClientRect().width || 0;
-              const onMouseMove = (ev: MouseEvent) => {
-                const dx = ev.clientX - startX;
+              const onMouseMove = (moveEvent: MouseEvent) => {
+                const dx = moveEvent.clientX - startX;
                 const newWidth = Math.max(200, startWidth + dx);
                 setSplitWidth(newWidth);
               };

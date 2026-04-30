@@ -13,6 +13,9 @@ import SettingsModal from "./components/SettingsModal";
 
 function App() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [selectedDirectory, setSelectedDirectory] = useState<string | null>(
+    null,
+  );
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -76,46 +79,47 @@ function App() {
       className={`h-screen w-screen flex flex-col ${theme === "dark" ? "dark" : ""}`}
     >
       <header
-        className="h-12 border-b flex items-center px-4 gap-3 bg-background drag"
-        style={{ boxShadow: "inset 0 -1px 0 hsl(var(--border) / 1)" }}
+        className="h-11 border-b flex items-center px-3 gap-3 bg-background/95 drag backdrop-blur-sm"
       >
         <div className="flex items-center gap-2 no-drag">
-          <FileText className="w-4 h-4 text-primary" />
-          <span className="text-sm font-semibold tracking-tight">Mark</span>
+          <FileText className="w-3.5 h-3.5 text-foreground/70" />
+          <span className="text-[13px] font-medium tracking-tight text-foreground/85">
+            Mark
+          </span>
         </div>
         <div className="flex-1" />
         {saving && (
-          <span className="text-xs text-muted-foreground mr-2 no-drag">
+          <span className="text-[11px] text-muted-foreground/80 mr-2 no-drag">
             Saving...
           </span>
         )}
         <div className="flex items-center gap-1 no-drag">
           <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
+            variant="ghost"
+            size="icon-sm"
+            className="h-7 w-7"
             onClick={handleSave}
           >
-            <SaveIcon className="w-4 h-4" />
+            <SaveIcon className="w-3.5 h-3.5" />
           </Button>
           <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
+            variant="ghost"
+            size="icon-sm"
+            className="h-7 w-7"
             onClick={() => setSettingsOpen(true)}
           >
-            <SettingsIcon className="w-4 h-4" />
+            <SettingsIcon className="w-3.5 h-3.5" />
           </Button>
           <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
+            variant="ghost"
+            size="icon-sm"
+            className="h-7 w-7"
             onClick={toggleTheme}
           >
             {theme === "light" ? (
-              <Moon className="w-4 h-4" />
+              <Moon className="w-3.5 h-3.5" />
             ) : (
-              <Sun className="w-4 h-4" />
+              <Sun className="w-3.5 h-3.5" />
             )}
           </Button>
         </div>
@@ -126,7 +130,12 @@ function App() {
       />
       <div className="flex-1 flex overflow-hidden bg-background">
         <div style={{ width: sidebarWidth }} className="flex-shrink-0">
-          <Sidebar onSelectFile={setSelectedFile} selectedFile={selectedFile} />
+          <Sidebar
+            onSelectFile={setSelectedFile}
+            onSelectDirectory={setSelectedDirectory}
+            selectedDirectory={selectedDirectory}
+            selectedFile={selectedFile}
+          />
         </div>
         <div
           className="w-1 cursor-col-resize hover:bg-primary/50 active:bg-primary/70 transition-all duration-150 flex-shrink-0 relative group"
