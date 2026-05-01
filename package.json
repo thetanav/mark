@@ -11,8 +11,32 @@
     "build:renderer": "vite build --outDir dist/renderer",
     "build:preload": "tsc --project tsconfig.preload.json",
     "build": "npm run build:renderer && npm run build:preload",
+    "dist:win": "npm run build && electron-builder --win portable",
     "start": "electron src/main/index.js",
     "typecheck": "tsc --noEmit"
+  },
+  "build": {
+    "appId": "com.mark.app",
+    "productName": "Mark",
+    "asar": true,
+    "files": [
+      "src/main/index.js",
+      "dist/preload/**",
+      "dist/renderer/**",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        "portable"
+      ]
+    },
+    "portable": {
+      "artifactName": "Mark-${version}.exe"
+    }
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
@@ -43,6 +67,7 @@
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
     "postcss": "^8.4.49",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^3.4.16",
