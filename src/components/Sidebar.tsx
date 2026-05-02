@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { VaultItem } from "@/types";
 
 interface SidebarProps {
@@ -330,26 +331,32 @@ export function Sidebar({
     <aside className="flex h-full min-w-[180px] flex-col border-r bg-background/90 backdrop-blur-sm">
 
         <div className="h-10 border-b flex items-center w-full justify-end gap-1 px-2">
-          <Button
-            variant="outline"
-            size="icon-sm"
-            className="h-7 w-7"
-            title="New file"
-            aria-label="New file"
-            onClick={() => handleCreate("file")}
-          >
-            <FilePlus2 className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            className="h-7 w-7"
-            title="New folder"
-            aria-label="New folder"
-            onClick={() => handleCreate("folder")}
-          >
-            <FolderPlus className="h-3.5 w-3.5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                className="h-7 w-7"
+                onClick={() => handleCreate("file")}
+              >
+                <FilePlus2 className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>New file</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                className="h-7 w-7"
+                onClick={() => handleCreate("folder")}
+              >
+                <FolderPlus className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>New folder</TooltipContent>
+          </Tooltip>
         </div>
 
       <div

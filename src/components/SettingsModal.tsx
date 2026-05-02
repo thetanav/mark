@@ -3,6 +3,7 @@ import { FolderOpen, FolderSearch, GitBranchPlus, GitCommitVertical } from "luci
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface SettingsModalProps {
   open: boolean;
@@ -101,16 +102,19 @@ export default function SettingsModal({
             <h3 className="text-base font-medium tracking-tight">Settings</h3>
           </div>
           <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon-sm"
-              className="h-8 w-8"
-              title="Open vault folder"
-              aria-label="Open vault folder"
-              onClick={openVaultFolder}
-            >
-              <FolderOpen className="h-3.5 w-3.5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  className="h-8 w-8"
+                  onClick={openVaultFolder}
+                >
+                  <FolderOpen className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Open vault folder</TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
@@ -123,16 +127,19 @@ export default function SettingsModal({
               placeholder="Vault path"
               className="font-mono text-[12px]"
             />
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              title="Choose vault folder"
-              aria-label="Choose vault folder"
-              onClick={chooseVaultFolder}
-            >
-              <FolderSearch className="h-3.5 w-3.5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={chooseVaultFolder}
+                >
+                  <FolderSearch className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Choose vault folder</TooltipContent>
+            </Tooltip>
           </div>
 
           <div className="rounded-xl border border-border/70 bg-muted/20 p-3">

@@ -1,6 +1,7 @@
 import { RouterProvider } from "@tanstack/react-router";
 import React, { useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { router } from "./utils/routes";
 
 const MIN_ZOOM = 0.75;
@@ -47,7 +48,11 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  return <RouterProvider router={router} />;
+  return (
+    <TooltipProvider>
+      <RouterProvider router={router} />
+    </TooltipProvider>
+  );
 }
 
 const container = document.getElementById("app");

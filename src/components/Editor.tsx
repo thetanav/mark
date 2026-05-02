@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type MonacoEditor = monaco.editor.IStandaloneCodeEditor;
 
@@ -234,7 +235,7 @@ export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, 
 
   if (!filePath) {
     return (
-      <div className="flex flex-1 items-center justify-center text-muted-foreground/80">
+      <div className="flex flex-1 items-center justify-center text-muted-foreground/80 h-full">
         <div className="text-center">
           <div className="mb-2 text-sm uppercase tracking-[0.3em] opacity-40">
             Note
@@ -255,62 +256,83 @@ export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, 
 
         <div className="flex items-center">
           <div className="flex gap-0 rounded-full border p-0.5">
-            <Button
-              variant={viewMode === "edit" ? "outline" : "ghost"}
-              size="icon-sm"
-              className="h-7 w-7 rounded-full"
-              onClick={() => setViewMode("edit")}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant={viewMode === "split" ? "outline" : "ghost"}
-              size="icon-sm"
-              className="h-7 w-7 rounded-full"
-              onClick={() => setViewMode("split")}
-            >
-              <Columns className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant={viewMode === "preview" ? "outline" : "ghost"}
-              size="icon-sm"
-              className="h-7 w-7 rounded-full"
-              onClick={() => setViewMode("preview")}
-            >
-              <Eye className="h-3.5 w-3.5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger>
+                <Button
+                  variant={viewMode === "edit" ? "outline" : "ghost"}
+                  size="icon-sm"
+                  className="h-7 w-7 rounded-full"
+                  onClick={() => setViewMode("edit")}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Edit</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger>
+                <Button
+                  variant={viewMode === "split" ? "outline" : "ghost"}
+                  size="icon-sm"
+                  className="h-7 w-7 rounded-full"
+                  onClick={() => setViewMode("split")}
+                >
+                  <Columns className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Split</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger>
+                <Button
+                  variant={viewMode === "preview" ? "outline" : "ghost"}
+                  size="icon-sm"
+                  className="h-7 w-7 rounded-full"
+                  onClick={() => setViewMode("preview")}
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Preview</TooltipContent>
+            </Tooltip>
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon-sm" className="ml-1 h-7 w-7">
-                <Download className="h-3.5 w-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => exportAs("pdf")}>
-                Export as PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => exportAs("docx")}>
-                Export as DOCX
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => exportAs("html")}>
-                Export as HTML
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Tooltip>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon-sm" className="ml-1 h-7 w-7">
+                  <Download className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => exportAs("pdf")}>
+                  Export as PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportAs("docx")}>
+                  Export as DOCX
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportAs("html")}>
+                  Export as HTML
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <TooltipContent>Export</TooltipContent>
+          </Tooltip>
 
           {onSave && (
-            <Button
-              variant="outline"
-              size="icon-sm"
-              className="ml-1 h-7 w-7"
-              title="Save file"
-              aria-label="Save file"
-              onClick={onSave}
-            >
-              <Save className="h-3.5 w-3.5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  className="ml-1 h-7 w-7"
+                  onClick={onSave}
+                >
+                  <Save className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Save</TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>

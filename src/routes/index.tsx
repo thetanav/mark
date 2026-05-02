@@ -138,7 +138,7 @@ function HomePage() {
           />
         </div>
         <div
-          className="w-1 cursor-col-resize select-none hover:bg-border/50 active:bg-border"
+          className="border cursor-col-resize select-none hover:border-primary active:border-primary transition-colors"
           onMouseDown={handleMouseDown}
         />
         <div className="min-w-0 flex-1 overflow-hidden">
