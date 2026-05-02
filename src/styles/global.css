@@ -235,7 +235,3 @@
 .markdown-preview th {
   @apply bg-muted font-semibold;
 }
-
-#editor-textarea {
-  font-family: var(--font-mono);
-}

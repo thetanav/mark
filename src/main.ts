@@ -107,7 +107,6 @@ function createWindow() {
       nodeIntegrationInSubFrames: false,
       preload,
     },
-    titleBarStyle: "hidden",
   });
 
   ipcContext.setMainWindow(mainWindow);

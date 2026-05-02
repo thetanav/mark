@@ -1,19 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ChevronDown,
-  ChevronUp,
-  Columns,
-  Download,
-  Eye,
-  Pencil,
-  Search,
-  X,
-} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Columns, Download, Eye, Pencil, Search } from "lucide-react";
 import Markdown from "markdown-to-jsx";
+import { basicSetup, EditorView } from "codemirror";
+import { markdown } from "@codemirror/lang-markdown";
+import { languages } from "@codemirror/language-data";
+import { defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { openSearchPanel } from "@codemirror/search";
+import { EditorState } from "@codemirror/state";
 
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export type ViewMode = "edit" | "preview" | "split";
 
@@ -23,92 +24,148 @@ interface EditorProps {
   onContentChange: (content: string) => void;
 }
 
+const editorTheme = EditorView.theme({
+  "&": {
+    height: "100%",
+    backgroundColor: "transparent",
+  },
+  "&.cm-focused": {
+    outline: "none",
+  },
+  ".cm-scroller": {
+    fontFamily: "var(--font-mono)",
+    lineHeight: "1.75",
+  },
+  ".cm-content": {
+    padding: "16px",
+    caretColor: "hsl(var(--foreground))",
+  },
+  ".cm-line": {
+    paddingLeft: "2px",
+  },
+  ".cm-gutters": {
+    backgroundColor: "transparent",
+    border: "none",
+    color: "hsl(var(--muted-foreground))",
+  },
+  ".cm-activeLineGutter": {
+    backgroundColor: "hsl(var(--muted) / 0.55)",
+  },
+  ".cm-activeLine": {
+    backgroundColor: "hsl(var(--muted) / 0.28)",
+  },
+  ".cm-selectionBackground, .cm-content ::selection": {
+    backgroundColor: "hsl(var(--accent) / 0.42) !important",
+  },
+  ".cm-cursor, .cm-dropCursor": {
+    borderLeftColor: "hsl(var(--foreground))",
+  },
+  ".cm-matchingBracket, .cm-nonmatchingBracket": {
+    backgroundColor: "hsl(var(--accent) / 0.34)",
+    outline: "none",
+  },
+  ".cm-searchMatch": {
+    backgroundColor: "hsl(var(--chart-1) / 0.22)",
+    outline: "1px solid hsl(var(--chart-1) / 0.35)",
+  },
+  ".cm-searchMatch.cm-searchMatch-selected": {
+    backgroundColor: "hsl(var(--chart-1) / 0.42)",
+  },
+  ".cm-tooltip, .cm-panel": {
+    backgroundColor: "hsl(var(--popover))",
+    color: "hsl(var(--popover-foreground))",
+    border: "1px solid hsl(var(--border))",
+    boxShadow: "0 18px 40px hsl(var(--foreground) / 0.08)",
+  },
+  ".cm-panel input, .cm-panel button": {
+    fontFamily: "var(--font-sans)",
+  },
+  ".cm-placeholder": {
+    color: "hsl(var(--muted-foreground))",
+    paddingLeft: "2px",
+  },
+});
+
 export function Editor({ filePath, content, onContentChange }: EditorProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("split");
   const [localContent, setLocalContent] = useState(content);
   const [splitWidth, setSplitWidth] = useState<number | null>(null);
-  const [findOpen, setFindOpen] = useState(false);
-  const [findQuery, setFindQuery] = useState("");
-  const [findIndex, setFindIndex] = useState(0);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [searchRequested, setSearchRequested] = useState(false);
+  const editorHostRef = useRef<HTMLDivElement | null>(null);
+  const editorViewRef = useRef<EditorView | null>(null);
+  const onContentChangeRef = useRef(onContentChange);
+  const viewModeRef = useRef<ViewMode>(viewMode);
+
+  useEffect(() => {
+    onContentChangeRef.current = onContentChange;
+  }, [onContentChange]);
+
+  useEffect(() => {
+    viewModeRef.current = viewMode;
+  }, [viewMode]);
 
   useEffect(() => {
     setLocalContent(content);
   }, [content]);
 
   useEffect(() => {
-    if (!findOpen) return;
-    if (viewMode === "preview") setViewMode("split");
-  }, [findOpen, viewMode]);
+    if (!filePath || !editorHostRef.current || editorViewRef.current) return;
 
-  const findMatches = useMemo(() => {
-    if (!findQuery) return [] as number[];
-    const matches: number[] = [];
-    const lowered = localContent.toLowerCase();
-    const needle = findQuery.toLowerCase();
-    let index = 0;
-    while (index <= lowered.length) {
-      const next = lowered.indexOf(needle, index);
-      if (next === -1) break;
-      matches.push(next);
-      index = next + needle.length || next + 1;
-    }
-    return matches;
-  }, [findQuery, localContent]);
+    const state = EditorState.create({
+      doc: content,
+      extensions: [
+        basicSetup,
+        markdown({ codeLanguages: languages }),
+        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+        editorTheme,
+        EditorView.lineWrapping,
+        EditorView.updateListener.of((update) => {
+          if (!update.docChanged) return;
+          const value = update.state.doc.toString();
+          setLocalContent(value);
+          onContentChangeRef.current(value);
+        }),
+      ],
+    });
 
-  useEffect(() => {
-    if (!findOpen) return;
-    setFindIndex(0);
-  }, [findOpen, findQuery]);
+    const view = new EditorView({
+      state,
+      parent: editorHostRef.current,
+    });
 
-  const jumpToMatch = useCallback(
-    (nextIndex: number) => {
-      if (!findQuery) return;
-      const matchStart = findMatches[nextIndex];
-      if (matchStart === undefined) return;
-      const matchEnd = matchStart + findQuery.length;
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      textarea.focus();
-      textarea.setSelectionRange(matchStart, matchEnd);
-    },
-    [findMatches, findQuery],
-  );
+    editorViewRef.current = view;
 
-  useEffect(() => {
-    if (!findOpen || !findQuery || findMatches.length === 0) return;
-    const clamped = Math.min(findIndex, findMatches.length - 1);
-    if (clamped !== findIndex) setFindIndex(clamped);
-    jumpToMatch(clamped);
-  }, [findIndex, findOpen, findMatches.length, findQuery, jumpToMatch]);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (!filePath) return;
-      const isFindShortcut =
-        (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f";
-      if (isFindShortcut) {
-        event.preventDefault();
-        setFindOpen(true);
-      }
-      if (!findOpen) return;
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setFindOpen(false);
-      }
+    return () => {
+      view.destroy();
+      editorViewRef.current = null;
     };
+  }, [filePath]);
 
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [filePath, findOpen]);
+  useEffect(() => {
+    const view = editorViewRef.current;
+    if (!view) return;
 
-  const handleChange = useCallback(
-    (value: string) => {
-      setLocalContent(value);
-      onContentChange(value);
-    },
-    [onContentChange],
-  );
+    const current = view.state.doc.toString();
+    if (current === content) return;
+
+    view.dispatch({
+      changes: {
+        from: 0,
+        to: current.length,
+        insert: content,
+      },
+    });
+  }, [content]);
+
+  useEffect(() => {
+    if (!searchRequested || viewMode === "preview") return;
+
+    const view = editorViewRef.current;
+    if (!view) return;
+
+    openSearchPanel(view);
+    setSearchRequested(false);
+  }, [searchRequested, viewMode]);
 
   const exportAs = async (format: "pdf" | "docx" | "html") => {
     if (!filePath) return;
@@ -167,6 +224,19 @@ export function Editor({ filePath, content, onContentChange }: EditorProps) {
     }
   };
 
+  const openSearch = () => {
+    if (viewModeRef.current === "preview") {
+      setSearchRequested(true);
+      setViewMode("split");
+      return;
+    }
+
+    const view = editorViewRef.current;
+    if (!view) return;
+
+    openSearchPanel(view);
+  };
+
   if (!filePath) {
     return (
       <div className="flex flex-1 items-center justify-center text-muted-foreground/80">
@@ -189,10 +259,10 @@ export function Editor({ filePath, content, onContentChange }: EditorProps) {
 
         <div className="flex items-center gap-1">
           <Button
-            variant={findOpen ? "secondary" : "ghost"}
+            variant="ghost"
             size="icon-sm"
             className="h-7 w-7"
-            onClick={() => setFindOpen((prev) => !prev)}
+            onClick={openSearch}
           >
             <Search className="h-3.5 w-3.5" />
           </Button>
@@ -245,90 +315,22 @@ export function Editor({ filePath, content, onContentChange }: EditorProps) {
         </div>
       </div>
 
-      {findOpen && (
-        <div className="flex items-center gap-2 border-b px-4 py-2">
-          <div className="flex-1">
-            <Input
-              nativeInput
-              value={findQuery}
-              onChange={(event) => setFindQuery(event.target.value)}
-              placeholder="Find in file..."
-              className="h-8 bg-background"
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  if (findMatches.length === 0) return;
-                  const direction = event.shiftKey ? -1 : 1;
-                  const nextIndex =
-                    (findIndex + direction + findMatches.length) %
-                    findMatches.length;
-                  setFindIndex(nextIndex);
-                }
-                if (event.key === "Escape") {
-                  event.preventDefault();
-                  setFindOpen(false);
-                }
-              }}
-            />
-          </div>
-          <span className="min-w-[52px] text-right text-[11px] tabular-nums text-muted-foreground">
-            {findMatches.length === 0
-              ? "0/0"
-              : `${findIndex + 1}/${findMatches.length}`}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="h-7 w-7"
-            onClick={() => {
-              if (findMatches.length === 0) return;
-              const nextIndex =
-                (findIndex - 1 + findMatches.length) % findMatches.length;
-              setFindIndex(nextIndex);
-            }}
-          >
-            <ChevronUp className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="h-7 w-7"
-            onClick={() => {
-              if (findMatches.length === 0) return;
-              const nextIndex = (findIndex + 1) % findMatches.length;
-              setFindIndex(nextIndex);
-            }}
-          >
-            <ChevronDown className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="h-7 w-7"
-            onClick={() => setFindOpen(false)}
-          >
-            <X className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      )}
-
       <div className="relative flex flex-1 overflow-hidden">
-        {(viewMode === "edit" || viewMode === "split") && (
-          <textarea
-            id="editor-textarea"
-            ref={textareaRef}
-            style={{
-              width: viewMode === "split" ? (splitWidth ?? "50%") : "100%",
-              fontFamily: "var(--font-mono)",
-            }}
-            className={`h-full resize-none bg-background p-4 text-[15px] leading-7 outline-none ${
-              viewMode === "split" ? "border-r border-border/70" : ""
-            }`}
-            value={localContent}
-            onChange={(event) => handleChange(event.target.value)}
-            placeholder="Start writing markdown..."
-          />
-        )}
+        <div
+          ref={editorHostRef}
+          className={`h-full min-h-0 overflow-hidden ${
+            viewMode === "split" ? "border-r border-border/70" : ""
+          }`}
+          style={{
+            width:
+              viewMode === "preview"
+                ? 0
+                : viewMode === "split"
+                  ? splitWidth ?? "50%"
+                  : "100%",
+            visibility: viewMode === "preview" ? "hidden" : "visible",
+          }}
+        />
 
         {(viewMode === "preview" || viewMode === "split") && (
           <div
@@ -364,9 +366,7 @@ export function Editor({ filePath, content, onContentChange }: EditorProps) {
             onMouseDown={(event) => {
               const startX = event.clientX;
               const startWidth =
-                (
-                  document.getElementById("editor-textarea") as HTMLElement
-                )?.getBoundingClientRect().width || 0;
+                editorHostRef.current?.getBoundingClientRect().width || 0;
               const onMouseMove = (moveEvent: MouseEvent) => {
                 const dx = moveEvent.clientX - startX;
                 const newWidth = Math.max(200, startWidth + dx);
@@ -385,4 +385,3 @@ export function Editor({ filePath, content, onContentChange }: EditorProps) {
     </div>
   );
 }
-

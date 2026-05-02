@@ -73,15 +73,15 @@ function HomePage() {
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden">
-      <header className="drag flex h-11 items-center border-b bg-background/95 px-3 backdrop-blur-sm">
-        <div className="no-drag flex items-center gap-2">
+      <div className="flex h-11 items-center border-b bg-background/95 px-3 backdrop-blur-sm">
+        <div className="flex items-center gap-2">
           <FileText className="h-3.5 w-3.5 text-foreground/70" />
           <span className="text-[13px] font-medium tracking-tight text-foreground/85">
             Mark
           </span>
         </div>
         <div className="flex-1" />
-        <div className="no-drag flex items-center gap-1">
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon-sm"
@@ -117,7 +117,7 @@ function HomePage() {
             )}
           </Button>
         </div>
-      </header>
+      </div>
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
