@@ -215,6 +215,22 @@ export function Sidebar({
     }
   };
 
+  const handleDropToRoot = async (e: React.DragEvent) => {
+    e.preventDefault();
+    const draggedPath = e.dataTransfer.getData("text/plain");
+    if (!draggedPath || !window.electronAPI) return;
+
+    const result = await window.electronAPI.vault.moveItem(draggedPath, "");
+    if (result) {
+      loadFiles();
+    }
+  };
+
+  const handleDragOverRoot = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
   const renderItem = (item: VaultItem, depth = 0) => {
     const isFolder = item.type === "folder";
     const isExpanded = expandedFolders.has(item.path);
@@ -336,7 +352,11 @@ export function Sidebar({
           </Button>
         </div>
 
-      <div className="flex-1 overflow-auto">
+      <div
+        className="flex-1 overflow-auto"
+        onDragOver={handleDragOverRoot}
+        onDrop={handleDropToRoot}
+      >
         {files.map((item) => renderItem(item))}
       </div>
     </aside>

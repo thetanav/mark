@@ -232,7 +232,7 @@ app.whenReady().then(async () => {
           return false;
         }
 
-        const targetPath = resolveWithinVault(targetFolder);
+        const targetPath = targetFolder === "" ? VAULT_PATH : resolveWithinVault(targetFolder);
         if (!fs.existsSync(targetPath) || !fs.statSync(targetPath).isDirectory()) {
           return false;
         }
