@@ -15,6 +15,7 @@ interface Window {
       createFile: (filePath: string) => Promise<boolean>;
       createFolder: (folderPath: string) => Promise<boolean>;
       renameItem: (itemPath: string, newName: string) => Promise<string | boolean>;
+      moveItem: (itemPath: string, targetFolder: string) => Promise<string | boolean>;
       deleteItem: (itemPath: string) => Promise<boolean>;
       openFolder: () => Promise<boolean>;
       getGitState: () => Promise<{ initialized: boolean }>;

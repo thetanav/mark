@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
       ipcRenderer.invoke("vault:createFolder", folderPath),
     renameItem: (itemPath: string, newName: string) =>
       ipcRenderer.invoke("vault:renameItem", itemPath, newName),
+    moveItem: (itemPath: string, targetFolder: string) =>
+      ipcRenderer.invoke("vault:moveItem", itemPath, targetFolder),
     deleteItem: (itemPath: string) => ipcRenderer.invoke("vault:deleteItem", itemPath),
     openFolder: () => ipcRenderer.invoke("vault:openFolder"),
     getGitState: () => ipcRenderer.invoke("vault:getGitState"),

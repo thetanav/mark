@@ -67,6 +67,8 @@ function getFilesRecursive(dir: string): VaultItem[] {
   const files: VaultItem[] = [];
 
   for (const item of items) {
+    if (item.name.startsWith(".")) continue;
+
     const fullPath = path.join(dir, item.name);
     const relativePath = toRelativeVaultPath(fullPath);
 
@@ -220,6 +222,30 @@ app.whenReady().then(async () => {
 
         fs.renameSync(fullPath, nextPath);
         return toRelativeVaultPath(nextPath);
+      },
+    );
+    ipcMain.handle(
+      "vault:moveItem",
+      (_event, itemPath: string, targetFolder: string) => {
+        const fullPath = resolveWithinVault(itemPath);
+        if (!fs.existsSync(fullPath)) {
+          return false;
+        }
+
+        const targetPath = resolveWithinVault(targetFolder);
+        if (!fs.existsSync(targetPath) || !fs.statSync(targetPath).isDirectory()) {
+          return false;
+        }
+
+        const fileName = path.basename(fullPath);
+        const destPath = path.join(targetPath, fileName);
+
+        if (fs.existsSync(destPath)) {
+          return false;
+        }
+
+        fs.renameSync(fullPath, destPath);
+        return toRelativeVaultPath(destPath);
       },
     );
     ipcMain.handle("vault:deleteItem", (_event, itemPath: string) => {

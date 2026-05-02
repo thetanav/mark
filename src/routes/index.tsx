@@ -4,7 +4,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   FileText,
   Moon,
-  Save as SaveIcon,
   Settings as SettingsIcon,
   Sun,
 } from "lucide-react";
@@ -18,7 +17,8 @@ function HomePage() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [selectedDirectory, setSelectedDirectory] = useState<string | null>(null);
   const [content, setContent] = useState("");
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [savedContent, setSavedContent] = useState("");
+  const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(250);
 
@@ -29,13 +29,30 @@ function HomePage() {
   useEffect(() => {
     if (!selectedFile) {
       setContent("");
+      setSavedContent("");
       return;
     }
 
     if (window.electronAPI) {
-      window.electronAPI.vault.readFile(selectedFile).then(setContent);
+      window.electronAPI.vault.readFile(selectedFile).then((fileContent: string) => {
+        setContent(fileContent);
+        setSavedContent(fileContent);
+      });
     }
   }, [selectedFile]);
+
+  const isUnsaved = content !== savedContent;
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isUnsaved) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isUnsaved]);
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
@@ -48,6 +65,7 @@ function HomePage() {
   const handleSave = useCallback(async () => {
     if (!selectedFile || !window.electronAPI) return;
     await window.electronAPI.vault.writeFile(selectedFile, content);
+    setSavedContent(content);
   }, [selectedFile, content]);
 
   const handleMouseDown = (event: React.MouseEvent) => {
@@ -81,16 +99,6 @@ function HomePage() {
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="icon-sm"
-            className="h-7 w-7"
-            title="Save file"
-            aria-label="Save file"
-            onClick={handleSave}
-          >
-            <SaveIcon className="h-3.5 w-3.5" />
-          </Button>
           <Button
             variant="outline"
             size="icon-sm"
@@ -129,11 +137,24 @@ function HomePage() {
             selectedFile={selectedFile}
           />
         </div>
+        <div
+          className="w-1 cursor-col-resize select-none hover:bg-border/50 active:bg-border"
+          onMouseDown={handleMouseDown}
+        />
         <div className="min-w-0 flex-1 overflow-hidden">
           <Editor
             filePath={selectedFile}
             content={content}
             onContentChange={handleContentChange}
+            onSave={handleSave}
+            isUnsaved={isUnsaved}
+            onCloseUnsaved={() => {
+              if (isUnsaved && !confirm("You have unsaved changes. Discard them?")) {
+                return false;
+              }
+              setSelectedFile(null);
+              return true;
+            }}
           />
         </div>
       </div>

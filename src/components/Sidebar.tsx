@@ -193,6 +193,28 @@ export function Sidebar({
     loadFiles();
   };
 
+  const handleDragStart = (e: React.DragEvent, item: VaultItem) => {
+    e.dataTransfer.setData("text/plain", item.path);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetFolder: VaultItem) => {
+    e.preventDefault();
+    const draggedPath = e.dataTransfer.getData("text/plain");
+    if (!draggedPath || !window.electronAPI) return;
+    if (draggedPath === targetFolder.path) return;
+
+    const result = await window.electronAPI.vault.moveItem(draggedPath, targetFolder.path);
+    if (result) {
+      loadFiles();
+    }
+  };
+
   const renderItem = (item: VaultItem, depth = 0) => {
     const isFolder = item.type === "folder";
     const isExpanded = expandedFolders.has(item.path);
@@ -207,6 +229,10 @@ export function Sidebar({
             isSelected || isDirectorySelected ? "bg-accent/30" : ""
           }`}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
+          draggable={!isRenaming}
+          onDragStart={(e) => handleDragStart(e, item)}
+          onDragOver={isFolder ? handleDragOver : undefined}
+          onDrop={isFolder ? (e) => handleDrop(e, item) : undefined}
           onClick={() => {
             if (isFolder) {
               onSelectDirectory(item.path);

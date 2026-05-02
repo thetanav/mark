@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Columns, Download, Eye, Pencil, Search } from "lucide-react";
+import { Columns, Download, Eye, Pencil, Save, Search } from "lucide-react";
 import Markdown from "markdown-to-jsx";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js";
 import "monaco-editor/min/vs/editor/editor.main.css";
@@ -41,6 +41,9 @@ interface EditorProps {
   filePath: string | null;
   content: string;
   onContentChange: (content: string) => void;
+  onSave?: () => void;
+  isUnsaved?: boolean;
+  onCloseUnsaved?: () => boolean;
 }
 
 function applyMonacoTheme() {
@@ -52,7 +55,7 @@ function applyMonacoTheme() {
   monaco.editor.setTheme(isDark ? "vs-dark" : "vs");
 }
 
-export function Editor({ filePath, content, onContentChange }: EditorProps) {
+export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, onCloseUnsaved }: EditorProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("split");
   const [localContent, setLocalContent] = useState(content);
   const [splitWidth, setSplitWidth] = useState<number | null>(null);
@@ -214,8 +217,20 @@ export function Editor({ filePath, content, onContentChange }: EditorProps) {
     if (!editor) return;
 
     editor.focus();
-    editor.getAction("actions.find")?.run();
+    editor.getAction("find")?.run();
   };
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    editor.addAction({
+      id: "custom-find",
+      label: "Custom Find",
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF],
+      run: () => openSearch(),
+    });
+  }, []);
 
   if (!filePath) {
     return (
@@ -232,12 +247,13 @@ export function Editor({ filePath, content, onContentChange }: EditorProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="flex items-center justify-between border-b h-10 px-4 py-2.5">
-        <span className="truncate text-[13px] font-medium text-foreground/80">
+      <div className="flex items-center justify-between border-b h-10 px-2 py-2.5">
+        <div className="flex items-center gap-2 text-[13px] font-medium text-foreground/80">
           {filePath.split("/").pop()}
-        </span>
+          {isUnsaved && <div className="bg-gray-500 h-2 w-2 rounded-full" />}
+        </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center">
           <div className="flex gap-0 rounded-full border p-0.5">
             <Button
               variant={viewMode === "edit" ? "outline" : "ghost"}
@@ -283,6 +299,19 @@ export function Editor({ filePath, content, onContentChange }: EditorProps) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {onSave && (
+            <Button
+              variant="outline"
+              size="icon-sm"
+              className="ml-1 h-7 w-7"
+              title="Save file"
+              aria-label="Save file"
+              onClick={onSave}
+            >
+              <Save className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </div>
 
