@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FolderOpen, GitBranchPlus, GitCommitVertical } from "lucide-react";
+import { FolderOpen, FolderSearch, GitBranchPlus, GitCommitVertical } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,15 @@ export default function SettingsModal({
   const openVaultFolder = async () => {
     if (!window.electronAPI) return;
     await window.electronAPI.vault.openFolder();
+  };
+
+  const chooseVaultFolder = async () => {
+    if (!window.electronAPI) return;
+
+    const result = await window.electronAPI.vault.selectPath();
+    if (result.canceled) return;
+
+    setPath(result.path);
   };
 
   const initGit = async () => {
@@ -91,16 +100,28 @@ export default function SettingsModal({
           <div>
             <h3 className="text-base font-medium tracking-tight">Settings</h3>
           </div>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="h-8 w-8"
-            title="Open vault folder"
-            aria-label="Open vault folder"
-            onClick={openVaultFolder}
-          >
-            <FolderOpen className="h-3.5 w-3.5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="h-8 w-8"
+              title="Open vault folder"
+              aria-label="Open vault folder"
+              onClick={openVaultFolder}
+            >
+              <FolderOpen className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="h-8 w-8"
+              title="Choose vault folder"
+              aria-label="Choose vault folder"
+              onClick={chooseVaultFolder}
+            >
+              <FolderSearch className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-4">

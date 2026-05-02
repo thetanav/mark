@@ -6,6 +6,7 @@ interface Window {
     vault: {
       getFiles: () => Promise<import("./types").VaultItem[]>;
       getPath: () => Promise<string>;
+      selectPath: () => Promise<{ canceled: boolean; path: string }>;
       setPath: (newPath: string) => Promise<boolean>;
       readFile: (filePath: string) => Promise<string>;
       writeFile: (filePath: string, content: string) => Promise<void>;

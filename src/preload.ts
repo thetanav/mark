@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   vault: {
     getFiles: () => ipcRenderer.invoke("vault:getFiles"),
     getPath: () => ipcRenderer.invoke("vault:getPath"),
+    selectPath: () => ipcRenderer.invoke("vault:selectPath"),
     setPath: (newPath: string) => ipcRenderer.invoke("vault:setPath", newPath),
     readFile: (filePath: string) => ipcRenderer.invoke("vault:readFile", filePath),
     writeFile: (filePath: string, content: string) =>

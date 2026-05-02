@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { execFile } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
-import { app, BrowserWindow, Menu, ipcMain, shell } from "electron";
+import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from "electron";
 import { installExtension, REACT_DEVELOPER_TOOLS } from "electron-devtools-installer";
 import { ipcContext } from "@/ipc/context";
 import { getBasePath } from "@/utils/path";
@@ -139,6 +139,23 @@ app.whenReady().then(async () => {
 
     ipcMain.handle("vault:getFiles", () => getFilesRecursive(VAULT_PATH));
     ipcMain.handle("vault:getPath", () => VAULT_PATH);
+    ipcMain.handle("vault:selectPath", async () => {
+      try {
+        const result = await dialog.showOpenDialog({
+          properties: ["openDirectory", "createDirectory"],
+          defaultPath: VAULT_PATH,
+        });
+
+        if (result.canceled || result.filePaths.length === 0) {
+          return { canceled: true, path: VAULT_PATH };
+        }
+
+        return { canceled: false, path: result.filePaths[0] };
+      } catch (error) {
+        console.error("Failed to open vault folder selector", error);
+        return { canceled: true, path: VAULT_PATH };
+      }
+    });
     ipcMain.handle("vault:setPath", (_event, newPath: string) => {
       try {
         const nextPath = path.resolve(newPath);
