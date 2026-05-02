@@ -203,8 +203,8 @@ export function Sidebar({
     return (
       <div key={item.path}>
         <div
-          className={`group flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 hover:bg-accent/40 ${
-            isSelected || isDirectorySelected ? "bg-accent" : ""
+          className={`group flex cursor-pointer items-center gap-2 px-2 py-1.5 hover:bg-accent/40 ${
+            isSelected || isDirectorySelected ? "bg-accent/30" : ""
           }`}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
           onClick={() => {
@@ -216,15 +216,6 @@ export function Sidebar({
             }
           }}
         >
-          {isFolder && (
-            <span className="flex h-4 w-4 items-center justify-center">
-              {isExpanded ? (
-                <ChevronDown className="h-3 w-3 text-muted-foreground/70" />
-              ) : (
-                <ChevronRight className="h-3 w-3 text-muted-foreground/70" />
-              )}
-            </span>
-          )}
           {isFolder ? (
             isExpanded ? (
               <FolderOpen className="h-3.5 w-3.5 text-foreground/70" />
@@ -235,9 +226,8 @@ export function Sidebar({
             <FileText className="h-3.5 w-3.5 text-muted-foreground/70" />
           )}
           {isRenaming ? (
-            <Input
+            <input
               autoFocus
-              nativeInput
               size={1}
               value={renameValue}
               onClick={(event) => event.stopPropagation()}
@@ -258,10 +248,10 @@ export function Sidebar({
                   handleRenameCommit(item);
                 }
               }}
-              className="h-7 flex-1 text-xs"
+              className="flex-1 text-[12px] outline-none border-b"
             />
           ) : (
-            <span className="min-w-0 flex-1 truncate text-[13px] text-foreground/88">
+            <span className="min-w-0 flex-1 truncate text-[12px] text-foreground/88">
               {item.name}
             </span>
           )}
@@ -269,7 +259,7 @@ export function Sidebar({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="opacity-0 transition-opacity group-hover:opacity-100"
+                className="opacity-0 transition-opacity group-hover:opacity-100 cursor-pointer"
                 title="Item actions"
                 aria-label="Item actions"
                 onClick={(event) => event.stopPropagation()}
@@ -296,49 +286,33 @@ export function Sidebar({
 
   return (
     <aside className="flex h-full min-w-[180px] flex-col border-r bg-background/90 backdrop-blur-sm">
-      <div className="border-b p-2">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="h-7 w-7"
-              title="Vault root"
-              aria-label="Vault root"
-              onClick={() => onSelectDirectory(null)}
-            >
-              <House className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="h-7 w-7"
-              title="New file"
-              aria-label="New file"
-              onClick={() => handleCreate("file")}
-            >
-              <FilePlus2 className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="h-7 w-7"
-              title="New folder"
-              aria-label="New folder"
-              onClick={() => handleCreate("folder")}
-            >
-              <FolderPlus className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-          <div className="min-w-0 flex-1 truncate text-right text-[11px] text-muted-foreground/70">
-            {selectedDirectory ?? "Root"}
-          </div>
+
+        <div className="h-10 border-b flex items-center w-full justify-end gap-1 px-2">
+          <Button
+            variant="outline"
+            size="icon-sm"
+            className="h-7 w-7"
+            title="New file"
+            aria-label="New file"
+            onClick={() => handleCreate("file")}
+          >
+            <FilePlus2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            className="h-7 w-7"
+            title="New folder"
+            aria-label="New folder"
+            onClick={() => handleCreate("folder")}
+          >
+            <FolderPlus className="h-3.5 w-3.5" />
+          </Button>
         </div>
-      </div>
-      <div className="flex-1 overflow-auto py-2">
+
+      <div className="flex-1 overflow-auto">
         {files.map((item) => renderItem(item))}
       </div>
     </aside>
   );
 }
-

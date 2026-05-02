@@ -122,6 +122,13 @@
     @apply border-border outline-ring/50;
   }
 
+  html,
+  body,
+  #app {
+    height: 100%;
+    width: 100%;
+  }
+
   body {
     @apply bg-background text-foreground overflow-hidden font-sans antialiased;
     background:

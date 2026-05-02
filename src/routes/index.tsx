@@ -20,7 +20,7 @@ function HomePage() {
   const [content, setContent] = useState("");
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(264);
+  const [sidebarWidth, setSidebarWidth] = useState(250);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -75,15 +75,14 @@ function HomePage() {
     <div className="flex h-screen w-screen flex-col overflow-hidden">
       <div className="flex h-11 items-center border-b bg-background/95 px-3 backdrop-blur-sm">
         <div className="flex items-center gap-2">
-          <FileText className="h-3.5 w-3.5 text-foreground/70" />
-          <span className="text-[13px] font-medium tracking-tight text-foreground/85">
-            Mark
+          <span className="text-md font-bold tracking-tight text-foreground/85 ml-2 select-none">
+            M
           </span>
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-1">
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon-sm"
             className="h-7 w-7"
             title="Save file"
@@ -93,7 +92,7 @@ function HomePage() {
             <SaveIcon className="h-3.5 w-3.5" />
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon-sm"
             className="h-7 w-7"
             title="Settings"
@@ -103,7 +102,7 @@ function HomePage() {
             <SettingsIcon className="h-3.5 w-3.5" />
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon-sm"
             className="h-7 w-7"
             title={theme === "light" ? "Switch to dark" : "Switch to light"}
@@ -130,12 +129,6 @@ function HomePage() {
             selectedFile={selectedFile}
           />
         </div>
-        <div
-          className="relative h-full w-1 flex-shrink-0 cursor-col-resize bg-transparent transition-colors hover:bg-primary/50 active:bg-primary/70"
-          onMouseDown={handleMouseDown}
-        >
-          <div className="absolute inset-y-0 -left-1 -right-1" />
-        </div>
         <div className="min-w-0 flex-1 overflow-hidden">
           <Editor
             filePath={selectedFile}
@@ -151,4 +144,3 @@ function HomePage() {
 export const Route = createFileRoute("/")({
   component: HomePage,
 });
-

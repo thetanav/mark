@@ -100,9 +100,9 @@ export default function SettingsModal({
           <div>
             <h3 className="text-base font-medium tracking-tight">Settings</h3>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon-sm"
               className="h-8 w-8"
               title="Open vault folder"
@@ -111,24 +111,11 @@ export default function SettingsModal({
             >
               <FolderOpen className="h-3.5 w-3.5" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="h-8 w-8"
-              title="Choose vault folder"
-              aria-label="Choose vault folder"
-              onClick={chooseVaultFolder}
-            >
-              <FolderSearch className="h-3.5 w-3.5" />
-            </Button>
           </div>
         </div>
 
         <div className="space-y-4">
-          <div>
-            <p className="mb-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-              Vault location
-            </p>
+          <div className="flex gap-1">
             <Input
               nativeInput
               value={path}
@@ -136,6 +123,16 @@ export default function SettingsModal({
               placeholder="Vault path"
               className="font-mono text-[12px]"
             />
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              title="Choose vault folder"
+              aria-label="Choose vault folder"
+              onClick={chooseVaultFolder}
+            >
+              <FolderSearch className="h-3.5 w-3.5" />
+            </Button>
           </div>
 
           <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
@@ -145,9 +142,6 @@ export default function SettingsModal({
                 <p className="text-[11px] text-muted-foreground">
                   Initialize the vault as a repository and commit your changes.
                 </p>
-              </div>
-              <div className="rounded-full border border-border/70 bg-background px-2 py-1 text-[11px] text-muted-foreground">
-                {gitInitialized ? "Initialized" : "Not initialized"}
               </div>
             </div>
 
@@ -178,14 +172,14 @@ export default function SettingsModal({
                   disabled={busyAction === "init"}
                 >
                   <GitCommitVertical className="h-4 w-4" />
-                  Commit changes
+                  Save changes
                 </Button>
               )}
             </div>
 
             {gitInitialized && (
               <p className="text-[11px] text-muted-foreground">
-                Commit will stage all vault changes and create a git commit.
+                This will stage all vault changes and create a git commit.
               </p>
             )}
           </div>

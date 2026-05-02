@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webFrame } from "electron";
 
 contextBridge.exposeInMainWorld("electronAPI", {
   vault: {
@@ -19,5 +19,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
     getGitState: () => ipcRenderer.invoke("vault:getGitState"),
     initGit: () => ipcRenderer.invoke("vault:initGit"),
     commitGit: (message: string) => ipcRenderer.invoke("vault:commitGit", message),
+  },
+  zoom: {
+    getFactor: () => webFrame.getZoomFactor(),
+    setFactor: (factor: number) => webFrame.setZoomFactor(factor),
   },
 });

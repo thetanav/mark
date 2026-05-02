@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
 declare const MAIN_WINDOW_VITE_NAME: string;
 
@@ -20,6 +22,10 @@ interface Window {
         { success: true; initialized: boolean } | { success: false; initialized: boolean; error: string }
       >;
       commitGit: (message: string) => Promise<{ success: true } | { success: false; error: string }>;
+    };
+    zoom: {
+      getFactor: () => number;
+      setFactor: (factor: number) => void;
     };
   };
 }

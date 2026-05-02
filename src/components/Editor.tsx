@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Columns, Download, Eye, Pencil, Search } from "lucide-react";
 import Markdown from "markdown-to-jsx";
-import { basicSetup, EditorView } from "codemirror";
-import { markdown } from "@codemirror/lang-markdown";
-import { languages } from "@codemirror/language-data";
-import { defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { openSearchPanel } from "@codemirror/search";
-import { EditorState } from "@codemirror/state";
+import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js";
+import "monaco-editor/min/vs/editor/editor.main.css";
+import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker.js?worker";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +13,28 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+type MonacoEditor = monaco.editor.IStandaloneCodeEditor;
+
+declare global {
+  interface Window {
+    MonacoEnvironment?: {
+      getWorker: (moduleId: string, label: string) => Worker;
+    };
+  }
+}
+
+if (typeof window !== "undefined" && !window.MonacoEnvironment) {
+  window.MonacoEnvironment = {
+    getWorker: (_moduleId, label) => {
+      if (label === "editorWorkerService") {
+        return new EditorWorker();
+      }
+
+      return new EditorWorker();
+    },
+  };
+}
+
 export type ViewMode = "edit" | "preview" | "split";
 
 interface EditorProps {
@@ -24,67 +43,14 @@ interface EditorProps {
   onContentChange: (content: string) => void;
 }
 
-const editorTheme = EditorView.theme({
-  "&": {
-    height: "100%",
-    backgroundColor: "transparent",
-  },
-  "&.cm-focused": {
-    outline: "none",
-  },
-  ".cm-scroller": {
-    fontFamily: "var(--font-mono)",
-    lineHeight: "1.75",
-  },
-  ".cm-content": {
-    padding: "16px",
-    caretColor: "hsl(var(--foreground))",
-  },
-  ".cm-line": {
-    paddingLeft: "2px",
-  },
-  ".cm-gutters": {
-    backgroundColor: "transparent",
-    border: "none",
-    color: "hsl(var(--muted-foreground))",
-  },
-  ".cm-activeLineGutter": {
-    backgroundColor: "hsl(var(--muted) / 0.55)",
-  },
-  ".cm-activeLine": {
-    backgroundColor: "hsl(var(--muted) / 0.28)",
-  },
-  ".cm-selectionBackground, .cm-content ::selection": {
-    backgroundColor: "hsl(var(--accent) / 0.42) !important",
-  },
-  ".cm-cursor, .cm-dropCursor": {
-    borderLeftColor: "hsl(var(--foreground))",
-  },
-  ".cm-matchingBracket, .cm-nonmatchingBracket": {
-    backgroundColor: "hsl(var(--accent) / 0.34)",
-    outline: "none",
-  },
-  ".cm-searchMatch": {
-    backgroundColor: "hsl(var(--chart-1) / 0.22)",
-    outline: "1px solid hsl(var(--chart-1) / 0.35)",
-  },
-  ".cm-searchMatch.cm-searchMatch-selected": {
-    backgroundColor: "hsl(var(--chart-1) / 0.42)",
-  },
-  ".cm-tooltip, .cm-panel": {
-    backgroundColor: "hsl(var(--popover))",
-    color: "hsl(var(--popover-foreground))",
-    border: "1px solid hsl(var(--border))",
-    boxShadow: "0 18px 40px hsl(var(--foreground) / 0.08)",
-  },
-  ".cm-panel input, .cm-panel button": {
-    fontFamily: "var(--font-sans)",
-  },
-  ".cm-placeholder": {
-    color: "hsl(var(--muted-foreground))",
-    paddingLeft: "2px",
-  },
-});
+function applyMonacoTheme() {
+  const isDark = document.documentElement.classList.contains("dark");
+  if (!window.MonacoEnvironment) {
+    return;
+  }
+
+  monaco.editor.setTheme(isDark ? "vs-dark" : "vs");
+}
 
 export function Editor({ filePath, content, onContentChange }: EditorProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("split");
@@ -92,7 +58,7 @@ export function Editor({ filePath, content, onContentChange }: EditorProps) {
   const [splitWidth, setSplitWidth] = useState<number | null>(null);
   const [searchRequested, setSearchRequested] = useState(false);
   const editorHostRef = useRef<HTMLDivElement | null>(null);
-  const editorViewRef = useRef<EditorView | null>(null);
+  const editorRef = useRef<MonacoEditor | null>(null);
   const onContentChangeRef = useRef(onContentChange);
   const viewModeRef = useRef<ViewMode>(viewMode);
 
@@ -109,61 +75,74 @@ export function Editor({ filePath, content, onContentChange }: EditorProps) {
   }, [content]);
 
   useEffect(() => {
-    if (!filePath || !editorHostRef.current || editorViewRef.current) return;
+    if (!filePath || !editorHostRef.current) return;
 
-    const state = EditorState.create({
-      doc: content,
-      extensions: [
-        basicSetup,
-        markdown({ codeLanguages: languages }),
-        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-        editorTheme,
-        EditorView.lineWrapping,
-        EditorView.updateListener.of((update) => {
-          if (!update.docChanged) return;
-          const value = update.state.doc.toString();
-          setLocalContent(value);
-          onContentChangeRef.current(value);
-        }),
-      ],
+    applyMonacoTheme();
+
+    const model = monaco.editor.createModel(content, "markdown");
+    const editor = monaco.editor.create(editorHostRef.current, {
+      automaticLayout: true,
+      fontFamily: "var(--font-mono)",
+      fontSize: 14,
+      lineHeight: 22,
+      lineNumbers: "on",
+      minimap: { enabled: false },
+      model,
+      language: "markdown",
+      colorDecorators: true,
+      wordWrap: "on",
+      scrollBeyondLastLine: false,
+      smoothScrolling: true,
+      padding: { top: 0, bottom: 0 },
+      tabSize: 2,
     });
 
-    const view = new EditorView({
-      state,
-      parent: editorHostRef.current,
+    const disposable = model.onDidChangeContent(() => {
+      const value = model.getValue();
+      setLocalContent(value);
+      onContentChangeRef.current(value);
     });
 
-    editorViewRef.current = view;
+    editorRef.current = editor;
+
+    const observer = new MutationObserver(() => {
+      applyMonacoTheme();
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
 
     return () => {
-      view.destroy();
-      editorViewRef.current = null;
+      observer.disconnect();
+      disposable.dispose();
+      editor.dispose();
+      model.dispose();
+      editorRef.current = null;
     };
   }, [filePath]);
 
   useEffect(() => {
-    const view = editorViewRef.current;
-    if (!view) return;
+    const editor = editorRef.current;
+    if (!editor) return;
 
-    const current = view.state.doc.toString();
+    const model = editor.getModel();
+    if (!model) return;
+
+    const current = model.getValue();
     if (current === content) return;
 
-    view.dispatch({
-      changes: {
-        from: 0,
-        to: current.length,
-        insert: content,
-      },
-    });
+    model.setValue(content);
   }, [content]);
 
   useEffect(() => {
     if (!searchRequested || viewMode === "preview") return;
 
-    const view = editorViewRef.current;
-    if (!view) return;
+    const editor = editorRef.current;
+    if (!editor) return;
 
-    openSearchPanel(view);
+    editor.focus();
+    editor.getAction("actions.find")?.run();
     setSearchRequested(false);
   }, [searchRequested, viewMode]);
 
@@ -231,10 +210,11 @@ export function Editor({ filePath, content, onContentChange }: EditorProps) {
       return;
     }
 
-    const view = editorViewRef.current;
-    if (!view) return;
+    const editor = editorRef.current;
+    if (!editor) return;
 
-    openSearchPanel(view);
+    editor.focus();
+    editor.getAction("actions.find")?.run();
   };
 
   if (!filePath) {
@@ -251,25 +231,16 @@ export function Editor({ filePath, content, onContentChange }: EditorProps) {
   }
 
   return (
-    <div className="flex h-full flex-1 flex-col">
-      <div className="flex items-center justify-between border-b px-4 py-2.5">
+    <div className="flex h-full min-h-0 flex-1 flex-col">
+      <div className="flex items-center justify-between border-b h-10 px-4 py-2.5">
         <span className="truncate text-[13px] font-medium text-foreground/80">
           {filePath.split("/").pop()}
         </span>
 
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="h-7 w-7"
-            onClick={openSearch}
-          >
-            <Search className="h-3.5 w-3.5" />
-          </Button>
-
-          <div className="flex gap-1 rounded-full bg-muted/50 p-0.5">
+          <div className="flex gap-0 rounded-full border p-0.5">
             <Button
-              variant={viewMode === "edit" ? "secondary" : "ghost"}
+              variant={viewMode === "edit" ? "outline" : "ghost"}
               size="icon-sm"
               className="h-7 w-7 rounded-full"
               onClick={() => setViewMode("edit")}
@@ -277,7 +248,7 @@ export function Editor({ filePath, content, onContentChange }: EditorProps) {
               <Pencil className="h-3.5 w-3.5" />
             </Button>
             <Button
-              variant={viewMode === "split" ? "secondary" : "ghost"}
+              variant={viewMode === "split" ? "outline" : "ghost"}
               size="icon-sm"
               className="h-7 w-7 rounded-full"
               onClick={() => setViewMode("split")}
@@ -285,7 +256,7 @@ export function Editor({ filePath, content, onContentChange }: EditorProps) {
               <Columns className="h-3.5 w-3.5" />
             </Button>
             <Button
-              variant={viewMode === "preview" ? "secondary" : "ghost"}
+              variant={viewMode === "preview" ? "outline" : "ghost"}
               size="icon-sm"
               className="h-7 w-7 rounded-full"
               onClick={() => setViewMode("preview")}
@@ -296,7 +267,7 @@ export function Editor({ filePath, content, onContentChange }: EditorProps) {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="ml-1 h-7 w-7">
+              <Button variant="outline" size="icon-sm" className="ml-1 h-7 w-7">
                 <Download className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
@@ -315,10 +286,10 @@ export function Editor({ filePath, content, onContentChange }: EditorProps) {
         </div>
       </div>
 
-      <div className="relative flex flex-1 overflow-hidden">
+      <div className="relative flex flex-1 min-h-0 overflow-hidden">
         <div
           ref={editorHostRef}
-          className={`h-full min-h-0 overflow-hidden ${
+          className={`h-full min-h-0 w-full overflow-hidden ${
             viewMode === "split" ? "border-r border-border/70" : ""
           }`}
           style={{
@@ -343,7 +314,7 @@ export function Editor({ filePath, content, onContentChange }: EditorProps) {
                     : "50%"
                   : "100%",
             }}
-            className="overflow-auto p-6"
+            className="h-full overflow-auto px-6"
           >
             <div className="markdown-preview max-w-none">
               <Markdown>{localContent || "*Nothing to preview*"}</Markdown>

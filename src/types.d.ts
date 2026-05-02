@@ -25,6 +25,10 @@ declare global {
         >;
         commitGit: (message: string) => Promise<{ success: true } | { success: false; error: string }>;
       };
+      zoom: {
+        getFactor: () => number;
+        setFactor: (factor: number) => void;
+      };
     };
   }
 }
