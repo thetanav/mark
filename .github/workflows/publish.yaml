@@ -44,8 +44,6 @@ jobs:
           name: mark-${{ matrix.name }}
           path: |
             out/make/**/*.exe
-            out/make/**/*.nupkg
-            out/make/**/RELEASES
             out/make/**/*.zip
           if-no-files-found: error
 
