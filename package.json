@@ -48,7 +48,7 @@
     "docx": "^9.5.1",
     "electron-squirrel-startup": "^1.0.1",
     "i18next": "^26.0.3",
-    "jspdf": "^3.0.1",
+    "jspdf": "^4.2.1",
     "lucide-react": "^1.7.0",
     "markdown-to-jsx": "^7.7.4",
     "monaco-editor": "^0.55.1",
