@@ -1,4 +1,7 @@
 import {
+  ArrowDown,
+  ArrowUp,
+  CornerDownLeft,
   FilePlus2,
   FileSearch,
   FolderInput,
@@ -11,10 +14,25 @@ import {
   Sun,
 } from "lucide-react";
 import type * as React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 import type { EditorHandle, ViewMode } from "@/components/Editor";
-import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandCollection,
+  CommandDialog,
+  CommandDialogPopup,
+  CommandEmpty,
+  CommandFooter,
+  CommandGroup,
+  CommandGroupLabel,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandPanel,
+  CommandSeparator,
+  CommandShortcut,
+} from "@/components/ui/command";
 import type { VaultItem } from "@/types";
 
 interface CommandPaletteProps {
@@ -35,15 +53,16 @@ interface CommandPaletteProps {
   theme: "light" | "dark";
 }
 
-interface CommandItem {
+interface PaletteCommandItem {
   hint: string;
   icon: React.ComponentType<{ className?: string }>;
   id: string;
   label: string;
+  persistOnRun?: boolean;
   run: () => void | Promise<void>;
+  shortcut?: string;
 }
 
-const QUERY_PART_SEPARATOR = /\s+/;
 const MARKDOWN_EXTENSION = /\.md$/;
 
 function flattenFiles(items: VaultItem[]): VaultItem[] {
@@ -51,15 +70,6 @@ function flattenFiles(items: VaultItem[]): VaultItem[] {
     item,
     ...(item.children ? flattenFiles(item.children) : []),
   ]);
-}
-
-function matchesQuery(item: CommandItem, query: string) {
-  const value = `${item.label} ${item.hint}`.toLowerCase();
-  return query
-    .toLowerCase()
-    .split(QUERY_PART_SEPARATOR)
-    .filter(Boolean)
-    .every((part) => value.includes(part));
 }
 
 export function CommandPalette({
@@ -79,8 +89,6 @@ export function CommandPalette({
   onSetTheme,
   onToggleFocusMode,
 }: CommandPaletteProps) {
-  const [query, setQuery] = useState("");
-  const [activeIndex, setActiveIndex] = useState(0);
   const [files, setFiles] = useState<VaultItem[]>([]);
   const [inputMode, setInputMode] = useState<"move" | "rename" | null>(null);
   const [inputValue, setInputValue] = useState("");
@@ -102,20 +110,20 @@ export function CommandPalette({
     if (!open) {
       return;
     }
-    setQuery("");
-    setActiveIndex(0);
     setInputMode(null);
+    setInputValue("");
     setError("");
     window.electronAPI?.vault.getFiles().then(setFiles);
   }, [open]);
 
-  const commands = useMemo<CommandItem[]>(
+  const commands = useMemo<PaletteCommandItem[]>(
     () => [
       {
         id: "new-note",
         label: "New note",
         hint: "Create markdown file",
         icon: FilePlus2,
+        shortcut: "Ctrl N",
         run: onCreateNote,
       },
       {
@@ -137,6 +145,7 @@ export function CommandPalette({
         label: "Search current note",
         hint: "Find text in editor",
         icon: Search,
+        shortcut: "Ctrl F",
         run: () => editor.current?.openSearch(),
       },
       {
@@ -168,6 +177,7 @@ export function CommandPalette({
         label: "Rename selected note",
         hint: "Change file name",
         icon: FileSearch,
+        persistOnRun: true,
         run: () => {
           const currentName =
             selectedFile?.split("/").pop()?.replace(MARKDOWN_EXTENSION, "") ??
@@ -182,6 +192,7 @@ export function CommandPalette({
         label: "Move selected note",
         hint: "Move to folder path",
         icon: FolderInput,
+        persistOnRun: true,
         run: () => {
           setInputValue(selectedDirectory ?? "");
           setInputMode("move");
@@ -208,6 +219,7 @@ export function CommandPalette({
         label: "Settings",
         hint: "Open app settings",
         icon: Settings,
+        shortcut: "Ctrl ,",
         run: onOpenSettings,
       },
     ],
@@ -216,18 +228,17 @@ export function CommandPalette({
       focusMode,
       onCreateNote,
       onFilesChanged,
-      onMoveSelected,
       onOpenFile,
       onOpenSettings,
-      onRenameSelected,
       onSetTheme,
       onToggleFocusMode,
+      selectedDirectory,
       selectedFile,
       theme,
     ]
   );
 
-  const fileCommands = useMemo<CommandItem[]>(
+  const fileCommands = useMemo<PaletteCommandItem[]>(
     () =>
       flattenFiles(files)
         .filter((item) => item.type === "file")
@@ -241,17 +252,19 @@ export function CommandPalette({
     [files, onOpenFile]
   );
 
-  const results = [...commands, ...fileCommands].filter((item) =>
-    matchesQuery(item, query)
+  const groupedItems = useMemo(
+    () => [
+      { items: commands, value: "Commands" },
+      { items: fileCommands, value: "Files" },
+    ],
+    [commands, fileCommands]
   );
 
-  const runActive = async () => {
-    const item = results[activeIndex];
-    if (!item) {
-      return;
-    }
+  const runCommand = async (item: PaletteCommandItem) => {
     await item.run();
-    onOpenChange(false);
+    if (!item.persistOnRun) {
+      onOpenChange(false);
+    }
   };
 
   const submitInput = async () => {
@@ -277,122 +290,118 @@ export function CommandPalette({
     onOpenChange(false);
   };
 
-  if (!open) {
-    return null;
-  }
-
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh]">
-      <button
-        aria-label="Close command palette"
-        className="absolute inset-0 bg-black/35 backdrop-blur-[2px]"
-        onClick={() => onOpenChange(false)}
-      />
-      <div className="relative z-10 w-[min(680px,calc(100vw-32px))] overflow-hidden rounded-xl border border-border/80 bg-popover shadow-2xl">
-        <div className="flex h-12 items-center border-b px-3">
-          <Search className="mr-2 h-4 w-4 text-muted-foreground" />
-          <input
-            autoFocus
-            className="h-full flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            onChange={(event) => {
-              if (inputMode) {
-                setInputValue(event.target.value);
-                return;
-              }
-
-              setQuery(event.target.value);
-              setActiveIndex(0);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                if (inputMode) {
-                  setInputMode(null);
-                  setError("");
-                } else {
-                  onOpenChange(false);
-                }
-              }
-              if (event.key === "ArrowDown") {
-                event.preventDefault();
-                setActiveIndex(
-                  (index) => (index + 1) % Math.max(results.length, 1)
-                );
-              }
-              if (event.key === "ArrowUp") {
-                event.preventDefault();
-                setActiveIndex(
-                  (index) =>
-                    (index - 1 + Math.max(results.length, 1)) %
-                    Math.max(results.length, 1)
-                );
-              }
-              if (event.key === "Enter") {
-                event.preventDefault();
-                if (inputMode) {
-                  submitInput();
-                } else {
-                  runActive();
-                }
-              }
-            }}
-            placeholder={
-              inputMode === "rename"
-                ? "New note name..."
-                : inputMode === "move"
-                  ? "Target folder inside vault..."
-                  : "Search files and commands..."
-            }
-            value={inputMode ? inputValue : query}
-          />
-          <span className="rounded border px-1.5 py-0.5 text-[10px] text-muted-foreground">
-            Ctrl P
-          </span>
-        </div>
-
+    <CommandDialog onOpenChange={onOpenChange} open={open}>
+      <CommandDialogPopup>
         {inputMode ? (
-          <div className="p-3">
-            <p className="mb-2 text-muted-foreground text-xs">
+          <form
+            className="relative -mx-px -mb-px rounded-2xl border bg-popover bg-clip-padding"
+            onSubmit={(event) => {
+              event.preventDefault();
+              submitInput();
+            }}
+          >
+            <div className="flex h-12 items-center border-b px-3">
+              <Search className="mr-2 h-4 w-4 text-muted-foreground" />
+              <input
+                autoFocus
+                className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                onChange={(event) => {
+                  setInputValue(event.target.value);
+                  setError("");
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setInputMode(null);
+                    setError("");
+                  }
+                }}
+                placeholder={
+                  inputMode === "rename"
+                    ? "New note name..."
+                    : "Target folder inside vault..."
+                }
+                value={inputValue}
+              />
+              <CommandShortcut>Enter</CommandShortcut>
+            </div>
+            <div className="px-4 py-3 text-muted-foreground text-xs">
               {inputMode === "rename"
-                ? "Press Enter to rename the selected note."
-                : "Press Enter to move the selected note."}
-            </p>
-            {error && <p className="text-destructive text-xs">{error}</p>}
-          </div>
+                ? "Rename the selected note."
+                : "Move the selected note to an existing folder."}
+              {error && (
+                <p className="mt-2 text-destructive text-xs">{error}</p>
+              )}
+            </div>
+          </form>
         ) : (
-          <div className="max-h-[420px] overflow-auto p-1.5">
-            {results.length === 0 ? (
-              <div className="px-3 py-8 text-center text-muted-foreground text-sm">
-                No matching command or file
+          <Command items={groupedItems}>
+            <CommandInput placeholder="Search files and commands..." />
+            <CommandPanel>
+              <CommandEmpty>No matching command or file.</CommandEmpty>
+              <CommandList>
+                {(
+                  group: { items: PaletteCommandItem[]; value: string },
+                  index
+                ) => (
+                  <Fragment key={group.value}>
+                    <CommandGroup items={group.items}>
+                      <CommandGroupLabel>{group.value}</CommandGroupLabel>
+                      <CommandCollection>
+                        {(item: PaletteCommandItem) => {
+                          const Icon = item.icon;
+                          return (
+                            <CommandItem
+                              key={item.id}
+                              onClick={() => runCommand(item)}
+                              value={`${item.label} ${item.hint}`}
+                            >
+                              <Icon className="mr-2 h-4 w-4 opacity-70" />
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-[13px]">
+                                  {item.label}
+                                </span>
+                                <span className="block truncate text-[11px] text-muted-foreground">
+                                  {item.hint}
+                                </span>
+                              </span>
+                              {item.shortcut && (
+                                <CommandShortcut>
+                                  {item.shortcut}
+                                </CommandShortcut>
+                              )}
+                            </CommandItem>
+                          );
+                        }}
+                      </CommandCollection>
+                    </CommandGroup>
+                    {index < groupedItems.length - 1 && <CommandSeparator />}
+                  </Fragment>
+                )}
+              </CommandList>
+            </CommandPanel>
+            <CommandFooter>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <ArrowUp className="h-3.5 w-3.5" />
+                  <ArrowDown className="h-3.5 w-3.5" />
+                  <span>Navigate</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <CornerDownLeft className="h-3.5 w-3.5" />
+                  <span>Open</span>
+                </div>
               </div>
-            ) : (
-              results.map((item, index) => {
-                const Icon = item.icon;
-                return (
-                  <Button
-                    className={`h-11 w-full justify-start rounded-md px-2 ${
-                      activeIndex === index ? "bg-accent" : ""
-                    }`}
-                    key={item.id}
-                    onClick={runActive}
-                    onMouseEnter={() => setActiveIndex(index)}
-                    variant="ghost"
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span className="min-w-0 flex-1 text-left">
-                      <span className="block truncate text-[13px]">
-                        {item.label}
-                      </span>
-                      <span className="block truncate text-[11px] text-muted-foreground">
-                        {item.hint}
-                      </span>
-                    </span>
-                  </Button>
-                );
-              })
-            )}
-          </div>
+              <div className="flex items-center gap-1.5">
+                <CommandShortcut>Esc</CommandShortcut>
+                <span>Close</span>
+              </div>
+            </CommandFooter>
+          </Command>
         )}
-      </div>
-    </div>
+      </CommandDialogPopup>
+    </CommandDialog>
   );
 }
