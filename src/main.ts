@@ -1,23 +1,29 @@
-import fs from "node:fs";
 import { execFile } from "node:child_process";
+import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from "electron";
-import { installExtension, REACT_DEVELOPER_TOOLS } from "electron-devtools-installer";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from "electron";
+import {
+  installExtension,
+  REACT_DEVELOPER_TOOLS,
+} from "electron-devtools-installer";
 import { ipcContext } from "@/ipc/context";
 import { getBasePath } from "@/utils/path";
-import { promisify } from "node:util";
 
-type VaultItem = {
+interface VaultItem {
+  children?: VaultItem[];
   name: string;
   path: string;
   type: "file" | "folder";
-  children?: VaultItem[];
-};
+}
 
 const vaultRoot = path.join(os.homedir(), "mark-vault");
 let VAULT_PATH = vaultRoot;
 const execFileAsync = promisify(execFile);
+const HTTP_URL_PATTERN = /^https?:\/\//i;
+const FILE_URL_PATTERN = /^file:\/\//i;
 
 function ensureVault() {
   if (!fs.existsSync(VAULT_PATH)) {
@@ -35,17 +41,14 @@ function resolveWithinVault(itemPath: string) {
 }
 
 function toRelativeVaultPath(fullPath: string) {
-  return path
-    .relative(VAULT_PATH, fullPath)
-    .split(path.sep)
-    .join("/");
+  return path.relative(VAULT_PATH, fullPath).split(path.sep).join("/");
 }
 
 function hasGitRepository() {
   return fs.existsSync(path.join(VAULT_PATH, ".git"));
 }
 
-async function runGit(args: string[]) {
+function runGit(args: string[]) {
   return execFileAsync("git", args, {
     cwd: VAULT_PATH,
     maxBuffer: 1024 * 1024 * 8,
@@ -53,7 +56,9 @@ async function runGit(args: string[]) {
 }
 
 function getFilesRecursive(dir: string): VaultItem[] {
-  if (!fs.existsSync(dir)) return [];
+  if (!fs.existsSync(dir)) {
+    return [];
+  }
 
   const items = fs
     .readdirSync(dir, { withFileTypes: true })
@@ -67,7 +72,9 @@ function getFilesRecursive(dir: string): VaultItem[] {
   const files: VaultItem[] = [];
 
   for (const item of items) {
-    if (item.name.startsWith(".")) continue;
+    if (item.name.startsWith(".")) {
+      continue;
+    }
 
     const fullPath = path.join(dir, item.name);
     const relativePath = toRelativeVaultPath(fullPath);
@@ -92,6 +99,19 @@ function getFilesRecursive(dir: string): VaultItem[] {
   }
 
   return files;
+}
+
+function getAvailableVaultPath(fileName: string) {
+  const parsed = path.parse(fileName);
+  let candidate = path.join(VAULT_PATH, fileName);
+  let count = 2;
+
+  while (fs.existsSync(candidate)) {
+    candidate = path.join(VAULT_PATH, `${parsed.name}-${count}${parsed.ext}`);
+    count += 1;
+  }
+
+  return candidate;
 }
 
 function createWindow() {
@@ -120,7 +140,7 @@ function createWindow() {
     mainWindow.webContents.openDevTools({ mode: "detach" });
   } else {
     mainWindow.loadFile(
-      path.join(basePath, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
+      path.join(basePath, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`)
     );
   }
 }
@@ -181,7 +201,7 @@ app.whenReady().then(async () => {
         const dir = path.dirname(fullPath);
         fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(fullPath, content, "utf-8");
-      },
+      }
     );
     ipcMain.handle("vault:createFile", (_event, itemPath: string) => {
       const fullPath = resolveWithinVault(itemPath);
@@ -222,7 +242,7 @@ app.whenReady().then(async () => {
 
         fs.renameSync(fullPath, nextPath);
         return toRelativeVaultPath(nextPath);
-      },
+      }
     );
     ipcMain.handle(
       "vault:moveItem",
@@ -232,8 +252,11 @@ app.whenReady().then(async () => {
           return false;
         }
 
-        const targetPath = targetFolder === "" ? VAULT_PATH : resolveWithinVault(targetFolder);
-        if (!fs.existsSync(targetPath) || !fs.statSync(targetPath).isDirectory()) {
+        const targetPath =
+          targetFolder === "" ? VAULT_PATH : resolveWithinVault(targetFolder);
+        if (
+          !(fs.existsSync(targetPath) && fs.statSync(targetPath).isDirectory())
+        ) {
           return false;
         }
 
@@ -246,7 +269,7 @@ app.whenReady().then(async () => {
 
         fs.renameSync(fullPath, destPath);
         return toRelativeVaultPath(destPath);
-      },
+      }
     );
     ipcMain.handle("vault:deleteItem", (_event, itemPath: string) => {
       const fullPath = resolveWithinVault(itemPath);
@@ -276,7 +299,8 @@ app.whenReady().then(async () => {
         return {
           success: false,
           initialized: hasGitRepository(),
-          error: error instanceof Error ? error.message : "Failed to initialize git",
+          error:
+            error instanceof Error ? error.message : "Failed to initialize git",
         };
       }
     });
@@ -288,7 +312,10 @@ app.whenReady().then(async () => {
         }
 
         if (!hasGitRepository()) {
-          return { success: false, error: "Vault is not initialized as a git repository" };
+          return {
+            success: false,
+            error: "Vault is not initialized as a git repository",
+          };
         }
 
         await runGit(["add", "-A"]);
@@ -305,8 +332,57 @@ app.whenReady().then(async () => {
         console.error("Failed to commit vault changes", error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : "Failed to commit changes",
+          error:
+            error instanceof Error ? error.message : "Failed to commit changes",
         };
+      }
+    });
+    ipcMain.handle("vault:importMarkdownFile", async () => {
+      try {
+        const result = await dialog.showOpenDialog({
+          properties: ["openFile"],
+          filters: [{ name: "Markdown", extensions: ["md", "markdown"] }],
+        });
+
+        if (result.canceled || result.filePaths.length === 0) {
+          return { canceled: true };
+        }
+
+        const sourcePath = result.filePaths[0];
+        const targetPath = getAvailableVaultPath(path.basename(sourcePath));
+        fs.copyFileSync(sourcePath, targetPath);
+
+        return { canceled: false, path: toRelativeVaultPath(targetPath) };
+      } catch (error) {
+        console.error("Failed to import markdown file", error);
+        return { canceled: true };
+      }
+    });
+    ipcMain.handle("shell:openPathOrUrl", async (_event, target: string) => {
+      try {
+        if (!target) {
+          return false;
+        }
+
+        if (HTTP_URL_PATTERN.test(target)) {
+          await shell.openExternal(target);
+          return true;
+        }
+
+        if (FILE_URL_PATTERN.test(target)) {
+          const filePath = fileURLToPath(target);
+          await shell.openPath(filePath);
+          return true;
+        }
+
+        const resolved = path.isAbsolute(target)
+          ? target
+          : path.resolve(VAULT_PATH, target);
+        await shell.openPath(resolved);
+        return true;
+      } catch (error) {
+        console.error("Failed to open path or URL", error);
+        return false;
       }
     });
 

@@ -16,15 +16,30 @@ declare global {
         writeFile: (filePath: string, content: string) => Promise<void>;
         createFile: (filePath: string) => Promise<boolean>;
         createFolder: (folderPath: string) => Promise<boolean>;
-        renameItem: (itemPath: string, newName: string) => Promise<string | boolean>;
-        moveItem: (itemPath: string, targetFolder: string) => Promise<string | boolean>;
+        renameItem: (
+          itemPath: string,
+          newName: string
+        ) => Promise<string | boolean>;
+        moveItem: (
+          itemPath: string,
+          targetFolder: string
+        ) => Promise<string | boolean>;
         deleteItem: (itemPath: string) => Promise<boolean>;
         openFolder: () => Promise<boolean>;
         getGitState: () => Promise<{ initialized: boolean }>;
         initGit: () => Promise<
-          { success: true; initialized: boolean } | { success: false; initialized: boolean; error: string }
+          | { success: true; initialized: boolean }
+          | { success: false; initialized: boolean; error: string }
         >;
-        commitGit: (message: string) => Promise<{ success: true } | { success: false; error: string }>;
+        commitGit: (
+          message: string
+        ) => Promise<{ success: true } | { success: false; error: string }>;
+        importMarkdownFile: () => Promise<
+          { canceled: true } | { canceled: false; path: string }
+        >;
+      };
+      shell: {
+        openPathOrUrl: (target: string) => Promise<boolean>;
       };
       zoom: {
         getFactor: () => number;

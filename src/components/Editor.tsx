@@ -1,7 +1,25 @@
-import { useEffect, useRef, useState } from "react";
-import { Columns, Download, Eye, Pencil, Save, Search } from "lucide-react";
+import {
+  Columns,
+  Download,
+  Eye,
+  ListTodo,
+  Pencil,
+  Quote,
+  Save,
+  Table,
+  TerminalSquare,
+} from "lucide-react";
 import Markdown from "markdown-to-jsx";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js";
+import type * as React from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import "monaco-editor/min/vs/editor/editor.main.css";
 import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker.js?worker";
 
@@ -12,7 +30,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type MonacoEditor = monaco.editor.IStandaloneCodeEditor;
 
@@ -38,14 +60,56 @@ if (typeof window !== "undefined" && !window.MonacoEnvironment) {
 
 export type ViewMode = "edit" | "preview" | "split";
 
+export interface EditorHandle {
+  exportAs: (format: "pdf" | "docx" | "html") => Promise<void>;
+  focus: () => void;
+  insertSnippet: (snippet: string) => void;
+  openSearch: () => void;
+  setViewMode: (mode: ViewMode) => void;
+}
+
 interface EditorProps {
-  filePath: string | null;
   content: string;
-  onContentChange: (content: string) => void;
-  onSave?: () => void;
+  filePath: string | null;
+  focusMode?: boolean;
   isUnsaved?: boolean;
   onCloseUnsaved?: () => boolean;
+  onContentChange: (content: string) => void;
+  onSave?: () => void;
 }
+
+const slashCommands = [
+  {
+    label: "Table",
+    icon: Table,
+    snippet: "| Column | Column |\n| --- | --- |\n| Value | Value |",
+  },
+  {
+    label: "Checklist",
+    icon: ListTodo,
+    snippet: "- [ ] First task\n- [ ] Second task",
+  },
+  {
+    label: "Code block",
+    icon: TerminalSquare,
+    snippet: "```ts\n\n```",
+  },
+  {
+    label: "Quote",
+    icon: Quote,
+    snippet: "> Quote",
+  },
+  {
+    label: "Callout",
+    icon: Quote,
+    snippet: "> [!NOTE]\n> Important detail",
+  },
+  {
+    label: "Mermaid",
+    icon: TerminalSquare,
+    snippet: "```mermaid\ngraph TD\n  A[Start] --> B[Next]\n```",
+  },
+];
 
 function applyMonacoTheme() {
   const isDark = document.documentElement.classList.contains("dark");
@@ -56,11 +120,16 @@ function applyMonacoTheme() {
   monaco.editor.setTheme(isDark ? "vs-dark" : "vs");
 }
 
-export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, onCloseUnsaved }: EditorProps) {
+export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
+  { filePath, content, onContentChange, onSave, isUnsaved, focusMode = false },
+  ref
+) {
   const [viewMode, setViewMode] = useState<ViewMode>("split");
   const [localContent, setLocalContent] = useState(content);
   const [splitWidth, setSplitWidth] = useState<number | null>(null);
   const [searchRequested, setSearchRequested] = useState(false);
+  const [slashOpen, setSlashOpen] = useState(false);
+  const [slashIndex, setSlashIndex] = useState(0);
   const editorHostRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<MonacoEditor | null>(null);
   const onContentChangeRef = useRef(onContentChange);
@@ -79,7 +148,9 @@ export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, 
   }, [content]);
 
   useEffect(() => {
-    if (!filePath || !editorHostRef.current) return;
+    if (!(filePath && editorHostRef.current)) {
+      return;
+    }
 
     applyMonacoTheme();
 
@@ -105,6 +176,16 @@ export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, 
       const value = model.getValue();
       setLocalContent(value);
       onContentChangeRef.current(value);
+
+      const editorPosition = editor.getPosition();
+      if (!editorPosition) {
+        return;
+      }
+
+      const line = model.getLineContent(editorPosition.lineNumber);
+      const previousChar = line.charAt(editorPosition.column - 2);
+      setSlashOpen(previousChar === "/");
+      setSlashIndex(0);
     });
 
     editorRef.current = editor;
@@ -128,22 +209,32 @@ export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, 
 
   useEffect(() => {
     const editor = editorRef.current;
-    if (!editor) return;
+    if (!editor) {
+      return;
+    }
 
     const model = editor.getModel();
-    if (!model) return;
+    if (!model) {
+      return;
+    }
 
     const current = model.getValue();
-    if (current === content) return;
+    if (current === content) {
+      return;
+    }
 
     model.setValue(content);
   }, [content]);
 
   useEffect(() => {
-    if (!searchRequested || viewMode === "preview") return;
+    if (!searchRequested || viewMode === "preview") {
+      return;
+    }
 
     const editor = editorRef.current;
-    if (!editor) return;
+    if (!editor) {
+      return;
+    }
 
     editor.focus();
     editor.getAction("actions.find")?.run();
@@ -151,7 +242,9 @@ export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, 
   }, [searchRequested, viewMode]);
 
   const exportAs = async (format: "pdf" | "docx" | "html") => {
-    if (!filePath) return;
+    if (!filePath) {
+      return;
+    }
     const fileName = filePath.split("/").pop()?.replace(".md", "") || "export";
 
     if (format === "pdf") {
@@ -178,7 +271,7 @@ export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, 
               (line) =>
                 new Paragraph({
                   children: [new TextRun(line || " ")],
-                }),
+                })
             ),
           },
         ],
@@ -215,15 +308,78 @@ export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, 
     }
 
     const editor = editorRef.current;
-    if (!editor) return;
+    if (!editor) {
+      return;
+    }
 
     editor.focus();
-    editor.getAction("find")?.run();
+    editor.getAction("actions.find")?.run();
   };
+
+  const insertSnippet = (snippet: string) => {
+    const editor = editorRef.current;
+    const model = editor?.getModel();
+    const position = editor?.getPosition();
+    if (!(editor && model && position)) {
+      return;
+    }
+
+    const line = model.getLineContent(position.lineNumber);
+    const replaceSlash = line.charAt(position.column - 2) === "/";
+    const range = new monaco.Range(
+      position.lineNumber,
+      replaceSlash ? position.column - 1 : position.column,
+      position.lineNumber,
+      position.column
+    );
+
+    editor.executeEdits("insert-snippet", [{ range, text: snippet }]);
+    editor.focus();
+    setSlashOpen(false);
+  };
+
+  useImperativeHandle(ref, () => ({
+    exportAs,
+    focus: () => editorRef.current?.focus(),
+    insertSnippet,
+    openSearch,
+    setViewMode,
+  }));
+
+  const markdownOptions = useMemo(
+    () => ({
+      overrides: {
+        a: {
+          component: ({
+            href,
+            children,
+            ...props
+          }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+            <a
+              {...props}
+              href={href}
+              onClick={(event) => {
+                if (!href) {
+                  return;
+                }
+                event.preventDefault();
+                window.electronAPI?.shell.openPathOrUrl(href);
+              }}
+            >
+              {children}
+            </a>
+          ),
+        },
+      },
+    }),
+    []
+  );
 
   useEffect(() => {
     const editor = editorRef.current;
-    if (!editor) return;
+    if (!editor) {
+      return;
+    }
 
     editor.addAction({
       id: "custom-find",
@@ -233,9 +389,46 @@ export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, 
     });
   }, []);
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!slashOpen) {
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setSlashOpen(false);
+        return;
+      }
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setSlashIndex((current) => (current + 1) % slashCommands.length);
+        return;
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setSlashIndex(
+          (current) =>
+            (current - 1 + slashCommands.length) % slashCommands.length
+        );
+        return;
+      }
+
+      if (event.key === "Enter" || event.key === "Tab") {
+        event.preventDefault();
+        insertSnippet(slashCommands[slashIndex].snippet);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [slashIndex, slashOpen]);
+
   if (!filePath) {
     return (
-      <div className="flex flex-1 items-center justify-center text-muted-foreground/80 h-full">
+      <div className="flex h-full flex-1 items-center justify-center text-muted-foreground/80">
         <div className="text-center">
           <div className="mb-2 text-sm uppercase tracking-[0.3em] opacity-40">
             Note
@@ -247,11 +440,15 @@ export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, 
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="flex items-center justify-between border-b h-10 px-2 py-2.5">
-        <div className="flex items-center gap-2 text-[13px] font-medium text-foreground/80">
+    <div
+      className={`flex h-full min-h-0 flex-1 flex-col ${focusMode ? "mx-auto max-w-5xl border-x bg-background/96 shadow-sm" : ""}`}
+    >
+      <div
+        className={`flex h-10 items-center justify-between border-b px-2 py-2.5 ${focusMode ? "bg-background/80" : ""}`}
+      >
+        <div className="flex items-center gap-2 font-medium text-[13px] text-foreground/80">
           {filePath.split("/").pop()}
-          {isUnsaved && <div className="bg-gray-500 h-2 w-2 rounded-full" />}
+          {isUnsaved && <div className="h-2 w-2 rounded-full bg-gray-500" />}
         </div>
 
         <div className="flex items-center">
@@ -259,10 +456,10 @@ export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, 
             <Tooltip>
               <TooltipTrigger>
                 <Button
-                  variant={viewMode === "edit" ? "outline" : "ghost"}
-                  size="icon-sm"
                   className="h-7 w-7 rounded-full"
                   onClick={() => setViewMode("edit")}
+                  size="icon-sm"
+                  variant={viewMode === "edit" ? "outline" : "ghost"}
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
@@ -272,10 +469,10 @@ export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, 
             <Tooltip>
               <TooltipTrigger>
                 <Button
-                  variant={viewMode === "split" ? "outline" : "ghost"}
-                  size="icon-sm"
                   className="h-7 w-7 rounded-full"
                   onClick={() => setViewMode("split")}
+                  size="icon-sm"
+                  variant={viewMode === "split" ? "outline" : "ghost"}
                 >
                   <Columns className="h-3.5 w-3.5" />
                 </Button>
@@ -285,10 +482,10 @@ export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, 
             <Tooltip>
               <TooltipTrigger>
                 <Button
-                  variant={viewMode === "preview" ? "outline" : "ghost"}
-                  size="icon-sm"
                   className="h-7 w-7 rounded-full"
                   onClick={() => setViewMode("preview")}
+                  size="icon-sm"
+                  variant={viewMode === "preview" ? "outline" : "ghost"}
                 >
                   <Eye className="h-3.5 w-3.5" />
                 </Button>
@@ -300,7 +497,11 @@ export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, 
           <Tooltip>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon-sm" className="ml-1 h-7 w-7">
+                <Button
+                  className="ml-1 h-7 w-7"
+                  size="icon-sm"
+                  variant="outline"
+                >
                   <Download className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
@@ -323,10 +524,10 @@ export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, 
             <Tooltip>
               <TooltipTrigger>
                 <Button
-                  variant="outline"
-                  size="icon-sm"
                   className="ml-1 h-7 w-7"
                   onClick={onSave}
+                  size="icon-sm"
+                  variant="outline"
                 >
                   <Save className="h-3.5 w-3.5" />
                 </Button>
@@ -337,18 +538,18 @@ export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, 
         </div>
       </div>
 
-      <div className="relative flex flex-1 min-h-0 overflow-hidden">
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <div
-          ref={editorHostRef}
           className={`h-full min-h-0 w-full overflow-hidden ${
-            viewMode === "split" ? "border-r border-border/70" : ""
+            viewMode === "split" ? "border-border/70 border-r" : ""
           }`}
+          ref={editorHostRef}
           style={{
             width:
               viewMode === "preview"
                 ? 0
                 : viewMode === "split"
-                  ? splitWidth ?? "50%"
+                  ? (splitWidth ?? "50%")
                   : "100%",
             visibility: viewMode === "preview" ? "hidden" : "visible",
           }}
@@ -356,6 +557,7 @@ export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, 
 
         {(viewMode === "preview" || viewMode === "split") && (
           <div
+            className="h-full overflow-auto px-6"
             id="preview-pane"
             style={{
               width:
@@ -365,26 +567,44 @@ export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, 
                     : "50%"
                   : "100%",
             }}
-            className="h-full overflow-auto px-6"
           >
             <div className="markdown-preview max-w-none">
-              <Markdown>{localContent || "*Nothing to preview*"}</Markdown>
+              <Markdown options={markdownOptions}>
+                {localContent || "*Nothing to preview*"}
+              </Markdown>
             </div>
+          </div>
+        )}
+
+        {slashOpen && viewMode !== "preview" && (
+          <div className="absolute top-8 left-8 z-30 w-56 overflow-hidden rounded-lg border border-border/80 bg-popover shadow-lg">
+            {slashCommands.map((command, index) => {
+              const Icon = command.icon;
+              return (
+                <button
+                  className={`flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] ${
+                    slashIndex === index
+                      ? "bg-accent text-accent-foreground"
+                      : "hover:bg-accent/70"
+                  }`}
+                  key={command.label}
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    insertSnippet(command.snippet);
+                  }}
+                  type="button"
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {command.label}
+                </button>
+              );
+            })}
           </div>
         )}
 
         {viewMode === "split" && (
           <div
             id="splitter"
-            style={{
-              width: 6,
-              cursor: "col-resize",
-              position: "absolute",
-              left: splitWidth ?? "50%",
-              top: 0,
-              bottom: 0,
-              transform: "translateX(-3px)",
-            }}
             onMouseDown={(event) => {
               const startX = event.clientX;
               const startWidth =
@@ -401,9 +621,18 @@ export function Editor({ filePath, content, onContentChange, onSave, isUnsaved, 
               document.addEventListener("mousemove", onMouseMove);
               document.addEventListener("mouseup", onMouseUp);
             }}
+            style={{
+              width: 6,
+              cursor: "col-resize",
+              position: "absolute",
+              left: splitWidth ?? "50%",
+              top: 0,
+              bottom: 0,
+              transform: "translateX(-3px)",
+            }}
           />
         )}
       </div>
     </div>
   );
-}
+});

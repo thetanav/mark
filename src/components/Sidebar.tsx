@@ -1,25 +1,31 @@
-import { useEffect, useState } from "react";
 import {
-  ChevronDown,
-  ChevronRight,
   FilePlus2,
   FileText,
   Folder,
   FolderOpen,
   FolderPlus,
-  House,
   MoreHorizontal,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { VaultItem } from "@/types";
 
 interface SidebarProps {
-  onSelectFile: (path: string | null) => void;
   onSelectDirectory: (path: string | null) => void;
+  onSelectFile: (path: string | null) => void;
+  refreshKey?: number;
   selectedDirectory: string | null;
   selectedFile: string | null;
 }
@@ -29,18 +35,26 @@ function joinPath(base: string | null, name: string) {
 }
 
 function isPathInsideFolder(path: string | null, folderPath: string) {
-  if (!path) return false;
+  if (!path) {
+    return false;
+  }
   return path === folderPath || path.startsWith(`${folderPath}/`);
 }
 
 function updatePathForFolderRename(
   path: string | null,
   oldFolderPath: string,
-  newFolderPath: string,
+  newFolderPath: string
 ) {
-  if (!path) return path;
-  if (path === oldFolderPath) return newFolderPath;
-  if (!path.startsWith(`${oldFolderPath}/`)) return path;
+  if (!path) {
+    return path;
+  }
+  if (path === oldFolderPath) {
+    return newFolderPath;
+  }
+  if (!path.startsWith(`${oldFolderPath}/`)) {
+    return path;
+  }
   return `${newFolderPath}${path.slice(oldFolderPath.length)}`;
 }
 
@@ -49,23 +63,26 @@ export function Sidebar({
   onSelectDirectory,
   selectedDirectory,
   selectedFile,
+  refreshKey = 0,
 }: SidebarProps) {
   const [files, setFiles] = useState<VaultItem[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
-    new Set(),
+    new Set()
   );
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
   const loadFiles = async () => {
-    if (!window.electronAPI) return;
+    if (!window.electronAPI) {
+      return;
+    }
     const items = await window.electronAPI.vault.getFiles();
     setFiles(items);
   };
 
   useEffect(() => {
     loadFiles();
-  }, []);
+  }, [refreshKey]);
 
   const toggleFolder = (path: string) => {
     setExpandedFolders((prev) => {
@@ -83,14 +100,16 @@ export function Sidebar({
     const now = new Date();
     const pad = (value: number) => String(value).padStart(2, "0");
     return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
-      now.getDate(),
+      now.getDate()
     )}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(
-      now.getSeconds(),
+      now.getSeconds()
     )}-${String(now.getMilliseconds()).padStart(3, "0")}`;
   };
 
   const handleCreate = async (type: "file" | "folder") => {
-    if (!window.electronAPI) return;
+    if (!window.electronAPI) {
+      return;
+    }
 
     const baseName = getTimestampName();
     const path =
@@ -132,14 +151,14 @@ export function Sidebar({
 
     const renamedPath = await window.electronAPI.vault.renameItem(
       item.path,
-      nextName,
+      nextName
     );
 
     if (typeof renamedPath === "string" && renamedPath) {
       if (item.type === "folder") {
         setExpandedFolders((prev) => {
           const next = new Set<string>();
-          prev.forEach((folderPath) => {
+          for (const folderPath of prev) {
             if (folderPath === item.path) {
               next.add(renamedPath);
             } else if (folderPath.startsWith(`${item.path}/`)) {
@@ -147,21 +166,21 @@ export function Sidebar({
             } else {
               next.add(folderPath);
             }
-          });
+          }
           return next;
         });
       }
 
       if (item.type === "file") {
         onSelectFile(
-          updatePathForFolderRename(selectedFile, item.path, renamedPath),
+          updatePathForFolderRename(selectedFile, item.path, renamedPath)
         );
       } else {
         onSelectDirectory(
-          updatePathForFolderRename(selectedDirectory, item.path, renamedPath),
+          updatePathForFolderRename(selectedDirectory, item.path, renamedPath)
         );
         onSelectFile(
-          updatePathForFolderRename(selectedFile, item.path, renamedPath),
+          updatePathForFolderRename(selectedFile, item.path, renamedPath)
         );
       }
     }
@@ -171,7 +190,9 @@ export function Sidebar({
   };
 
   const handleDelete = async (path: string) => {
-    if (!window.electronAPI) return;
+    if (!window.electronAPI) {
+      return;
+    }
     await window.electronAPI.vault.deleteItem(path);
 
     setExpandedFolders((prev) => {
@@ -207,10 +228,17 @@ export function Sidebar({
   const handleDrop = async (e: React.DragEvent, targetFolder: VaultItem) => {
     e.preventDefault();
     const draggedPath = e.dataTransfer.getData("text/plain");
-    if (!draggedPath || !window.electronAPI) return;
-    if (draggedPath === targetFolder.path) return;
+    if (!(draggedPath && window.electronAPI)) {
+      return;
+    }
+    if (draggedPath === targetFolder.path) {
+      return;
+    }
 
-    const result = await window.electronAPI.vault.moveItem(draggedPath, targetFolder.path);
+    const result = await window.electronAPI.vault.moveItem(
+      draggedPath,
+      targetFolder.path
+    );
     if (result) {
       loadFiles();
     }
@@ -219,7 +247,9 @@ export function Sidebar({
   const handleDropToRoot = async (e: React.DragEvent) => {
     e.preventDefault();
     const draggedPath = e.dataTransfer.getData("text/plain");
-    if (!draggedPath || !window.electronAPI) return;
+    if (!(draggedPath && window.electronAPI)) {
+      return;
+    }
 
     const result = await window.electronAPI.vault.moveItem(draggedPath, "");
     if (result) {
@@ -245,11 +275,7 @@ export function Sidebar({
           className={`group flex cursor-pointer items-center gap-2 px-2 py-1.5 hover:bg-accent/40 ${
             isSelected || isDirectorySelected ? "bg-accent/30" : ""
           }`}
-          style={{ paddingLeft: `${depth * 12 + 8}px` }}
           draggable={!isRenaming}
-          onDragStart={(e) => handleDragStart(e, item)}
-          onDragOver={isFolder ? handleDragOver : undefined}
-          onDrop={isFolder ? (e) => handleDrop(e, item) : undefined}
           onClick={() => {
             if (isFolder) {
               onSelectDirectory(item.path);
@@ -258,6 +284,10 @@ export function Sidebar({
               onSelectFile(item.path);
             }
           }}
+          onDragOver={isFolder ? handleDragOver : undefined}
+          onDragStart={(e) => handleDragStart(e, item)}
+          onDrop={isFolder ? (e) => handleDrop(e, item) : undefined}
+          style={{ paddingLeft: `${depth * 12 + 8}px` }}
         >
           {isFolder ? (
             isExpanded ? (
@@ -271,10 +301,14 @@ export function Sidebar({
           {isRenaming ? (
             <input
               autoFocus
-              size={1}
-              value={renameValue}
-              onClick={(event) => event.stopPropagation()}
+              className="flex-1 border-b text-[12px] outline-none"
+              onBlur={() => {
+                if (renamingPath === item.path) {
+                  handleRenameCommit(item);
+                }
+              }}
               onChange={(event) => setRenameValue(event.target.value)}
+              onClick={(event) => event.stopPropagation()}
               onKeyDown={(event) => {
                 event.stopPropagation();
                 if (event.key === "Enter") {
@@ -286,12 +320,8 @@ export function Sidebar({
                   handleRenameCancel();
                 }
               }}
-              onBlur={() => {
-                if (renamingPath === item.path) {
-                  handleRenameCommit(item);
-                }
-              }}
-              className="flex-1 text-[12px] outline-none border-b"
+              size={1}
+              value={renameValue}
             />
           ) : (
             <span className="min-w-0 flex-1 truncate text-[12px] text-foreground/88">
@@ -301,11 +331,11 @@ export function Sidebar({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                type="button"
-                className="opacity-0 transition-opacity group-hover:opacity-100 cursor-pointer"
-                title="Item actions"
                 aria-label="Item actions"
+                className="cursor-pointer opacity-0 transition-opacity group-hover:opacity-100"
                 onClick={(event) => event.stopPropagation()}
+                title="Item actions"
+                type="button"
               >
                 <MoreHorizontal className="h-3 w-3 text-muted-foreground/70" />
               </button>
@@ -321,7 +351,9 @@ export function Sidebar({
           </DropdownMenu>
         </div>
         {isFolder && isExpanded && item.children && (
-          <div>{item.children.map((child) => renderItem(child, depth + 1))}</div>
+          <div>
+            {item.children.map((child) => renderItem(child, depth + 1))}
+          </div>
         )}
       </div>
     );
@@ -329,35 +361,34 @@ export function Sidebar({
 
   return (
     <aside className="flex h-full min-w-[180px] flex-col border-r bg-background/90 backdrop-blur-sm">
-
-        <div className="h-10 border-b flex items-center w-full justify-end gap-1 px-2">
-          <Tooltip>
-            <TooltipTrigger>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                className="h-7 w-7"
-                onClick={() => handleCreate("file")}
-              >
-                <FilePlus2 className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>New file</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                className="h-7 w-7"
-                onClick={() => handleCreate("folder")}
-              >
-                <FolderPlus className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>New folder</TooltipContent>
-          </Tooltip>
-        </div>
+      <div className="flex h-10 w-full items-center justify-end gap-1 border-b px-2">
+        <Tooltip>
+          <TooltipTrigger>
+            <Button
+              className="h-7 w-7"
+              onClick={() => handleCreate("file")}
+              size="icon-sm"
+              variant="outline"
+            >
+              <FilePlus2 className="h-3.5 w-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>New file</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger>
+            <Button
+              className="h-7 w-7"
+              onClick={() => handleCreate("folder")}
+              size="icon-sm"
+              variant="outline"
+            >
+              <FolderPlus className="h-3.5 w-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>New folder</TooltipContent>
+        </Tooltip>
+      </div>
 
       <div
         className="flex-1 overflow-auto"
