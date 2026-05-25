@@ -20,7 +20,7 @@
     "test:e2e": "playwright test",
     "test:all": "vitest run && playwright test"
   },
-  "author": "ROG <luanroger.dev@gmail.com>",
+  "author": "thetanav",
   "license": "MIT",
   "dependencies": {
     "@base-ui/react": "^1.4.1",
